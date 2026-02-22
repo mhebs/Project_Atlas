@@ -22,11 +22,11 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-12">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8 sm:px-6">
+      <div className="w-full max-w-lg">
         {/* Progress indicator */}
         {step > 0 && (
-          <div className="mb-8 flex items-center gap-2">
+          <div className="mb-6 flex items-center gap-2">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
