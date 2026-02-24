@@ -1,29 +1,31 @@
-"use client";
+"use client"
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAtlas } from "@/context/atlas-context";
+import { useState } from "react"
+import { Sidebar } from "@/components/atlas/sidebar"
+import { MobileNav } from "@/components/atlas/mobile-nav"
+import { ChatScreen } from "@/components/atlas/chat-screen"
+import { PositionsScreen } from "@/components/atlas/positions-screen"
+import { BalanceScreen } from "@/components/atlas/balance-screen"
+import { ActivityScreen } from "@/components/atlas/activity-screen"
 
-export default function RootPage() {
-  const router = useRouter();
-  const { state } = useAtlas();
+type View = "chat" | "positions" | "balance" | "activity"
 
-  useEffect(() => {
-    if (state.isActivated) {
-      router.replace("/home");
-    } else {
-      router.replace("/onboarding");
-    }
-  }, [state.isActivated, router]);
+export default function Home() {
+  const [activeView, setActiveView] = useState<View>("chat")
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-3">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
-          <span className="text-xl font-bold text-primary-foreground font-serif">A</span>
+    <div className="min-h-screen bg-background">
+      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      <MobileNav activeView={activeView} onNavigate={setActiveView} />
+
+      <main className="lg:ml-[260px] h-screen pb-16 lg:pb-0">
+        <div className="h-full transition-opacity duration-200">
+          {activeView === "chat" && <ChatScreen />}
+          {activeView === "positions" && <PositionsScreen />}
+          {activeView === "balance" && <BalanceScreen />}
+          {activeView === "activity" && <ActivityScreen />}
         </div>
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
-    </main>
-  );
+      </main>
+    </div>
+  )
 }

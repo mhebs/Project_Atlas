@@ -4,54 +4,47 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Atlas: Warm parchment + deep green fintech */
-  --background: oklch(0.96 0.01 85);
-  --foreground: oklch(0.20 0.02 50);
-  --card: oklch(0.99 0.005 85);
-  --card-foreground: oklch(0.20 0.02 50);
-  --popover: oklch(0.99 0.005 85);
-  --popover-foreground: oklch(0.20 0.02 50);
-  --primary: oklch(0.38 0.08 160);
-  --primary-foreground: oklch(0.99 0.005 85);
-  --secondary: oklch(0.93 0.015 85);
-  --secondary-foreground: oklch(0.25 0.02 50);
-  --muted: oklch(0.93 0.015 85);
-  --muted-foreground: oklch(0.50 0.02 50);
-  --accent: oklch(0.93 0.015 85);
-  --accent-foreground: oklch(0.25 0.02 50);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.015 85);
-  --input: oklch(0.88 0.015 85);
-  --ring: oklch(0.38 0.08 160);
-  --chart-1: oklch(0.38 0.08 160);
-  --chart-2: oklch(0.55 0.10 160);
-  --chart-3: oklch(0.45 0.06 50);
-  --chart-4: oklch(0.70 0.08 85);
-  --chart-5: oklch(0.60 0.05 50);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.96 0.01 85);
-  --sidebar-foreground: oklch(0.20 0.02 50);
-  --sidebar-primary: oklch(0.38 0.08 160);
-  --sidebar-primary-foreground: oklch(0.99 0.005 85);
-  --sidebar-accent: oklch(0.93 0.015 85);
-  --sidebar-accent-foreground: oklch(0.25 0.02 50);
-  --sidebar-border: oklch(0.88 0.015 85);
-  --sidebar-ring: oklch(0.38 0.08 160);
-
-  /* Custom Atlas tokens */
-  --atlas-green: oklch(0.38 0.08 160);
-  --atlas-green-light: oklch(0.92 0.04 160);
-  --atlas-parchment: oklch(0.96 0.01 85);
-  --atlas-parchment-dark: oklch(0.93 0.015 85);
-  --atlas-ink: oklch(0.20 0.02 50);
-  --atlas-ink-muted: oklch(0.50 0.02 50);
+  --background: #f6f3ee;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #1f2a44;
+  --primary-foreground: #f6f3ee;
+  --secondary: #b08d57;
+  --secondary-foreground: #ffffff;
+  --muted: #f0ece5;
+  --muted-foreground: #8c857b;
+  --accent: #b08d57;
+  --accent-foreground: #ffffff;
+  --destructive: #9b3b3b;
+  --destructive-foreground: #ffffff;
+  --border: #e8e3dc;
+  --input: #e8e3dc;
+  --ring: #1f2a44;
+  --chart-1: #1f2a44;
+  --chart-2: #b08d57;
+  --chart-3: #8c857b;
+  --chart-4: #e8e3dc;
+  --chart-5: #f0ece5;
+  --radius: 0.5rem;
+  --sidebar: #1f2a44;
+  --sidebar-foreground: #f6f3ee;
+  --sidebar-primary: #b08d57;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a3654;
+  --sidebar-accent-foreground: #f6f3ee;
+  --sidebar-border: #2a3654;
+  --sidebar-ring: #b08d57;
+  --gain: #3d6b4f;
+  --loss: #9b3b3b;
 }
 
 @theme inline {
-  --font-sans: var(--font-dm-sans), 'DM Sans', sans-serif;
-  --font-serif: var(--font-instrument-serif), 'Instrument Serif', serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-lora);
+  --font-mono: var(--font-jetbrains-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -88,12 +81,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-atlas-green: var(--atlas-green);
-  --color-atlas-green-light: var(--atlas-green-light);
-  --color-atlas-parchment: var(--atlas-parchment);
-  --color-atlas-parchment-dark: var(--atlas-parchment-dark);
-  --color-atlas-ink: var(--atlas-ink);
-  --color-atlas-ink-muted: var(--atlas-ink-muted);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
 }
 
 @layer base {

@@ -1,45 +1,62 @@
-import type { Metadata, Viewport } from "next";
-import { DM_Sans, Instrument_Serif } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { AtlasProvider } from "@/context/atlas-context";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next'
+import { Inter, Lora, JetBrains_Mono } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import './globals.css'
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-});
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
 
-const instrumentSerif = Instrument_Serif({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-instrument-serif",
-});
+const lora = Lora({
+  subsets: ['latin'],
+  variable: '--font-lora',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
+})
 
 export const metadata: Metadata = {
-  title: "Atlas - Your Autonomous Investing Agent",
-  description:
-    "A strategy-based investing agent that works 24/7 under your rules. Your personal hedge fund manager.",
-};
+  title: 'Project Atlas',
+  description: 'A disciplined portfolio execution system with AI-powered strategy intelligence.',
+  icons: {
+    icon: [
+      {
+        url: '/icon-light-32x32.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/icon-dark-32x32.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      },
+    ],
+    apple: '/apple-icon.png',
+  },
+}
 
 export const viewport: Viewport = {
-  themeColor: "#f3efe7",
-  width: "device-width",
+  themeColor: '#1f2a44',
+  width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${instrumentSerif.variable}`}>
-      <body className="font-sans antialiased">
-        <AtlasProvider>{children}</AtlasProvider>
+    <html lang="en">
+      <body className={`${inter.variable} ${lora.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
+        {children}
         <Analytics />
       </body>
     </html>
-  );
+  )
 }
