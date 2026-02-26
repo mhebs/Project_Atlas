@@ -1,22 +1,21 @@
 "use client"
 
-import { MessageSquare, BarChart3, Wallet, Activity } from "lucide-react"
+import { MessageSquare, ScrollText, Wallet, UserRound } from "lucide-react"
+import type { AtlasView } from "./view-types"
 
-type View = "chat" | "positions" | "balance" | "activity"
-
-const navItems: { id: View; label: string; icon: React.ElementType }[] = [
+const navItems: { id: AtlasView; label: string; icon: React.ElementType }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "positions", label: "Positions", icon: BarChart3 },
-  { id: "balance", label: "Balance", icon: Wallet },
-  { id: "activity", label: "Activity", icon: Activity },
+  { id: "strategy", label: "Strategy", icon: ScrollText },
+  { id: "portfolio", label: "Portfolio", icon: Wallet },
+  { id: "user", label: "User", icon: UserRound },
 ]
 
 export function MobileNav({
   activeView,
   onNavigate,
 }: {
-  activeView: View
-  onNavigate: (view: View) => void
+  activeView: AtlasView
+  onNavigate: (view: AtlasView) => void
 }) {
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">

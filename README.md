@@ -174,3 +174,32 @@ Transparency over hype
 Guardrails > growth hacks
 
 The agent should feel like a disciplined partner, not a dopamine machine.
+
+## Optional Frontend (Local Dev)
+
+This `Project_Atlas` app is an optional frontend for the CLI-first agent in the parent repo.
+It reads local files from the parent workspace:
+
+- `workspace/STRATEGY.md`
+- `workspace/PORTFOLIO.md`
+- `workspace/USER.md`
+- `workspace/sessions/*.json`
+
+The CLI agent continues to work without this frontend.
+
+### Local setup
+
+1. Install dependencies:
+   - `cd /Users/armstrongflg/autonomous-investing/Project_Atlas`
+   - `npm install`
+2. Configure environment:
+   - `cp .env.example .env.local`
+   - Update `ATLAS_REPO_ROOT` if your repo is in a different location
+3. Start the frontend:
+   - `npm run dev`
+
+### Notes
+
+- The chat screen streams the latest session transcript via SSE by reading `workspace/sessions/*.json`.
+- Phase 1 is intentionally read-focused: chat composer is present but sending is stubbed.
+- Strategy, Portfolio, and User screens are markdown-driven views over the workspace files.

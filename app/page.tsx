@@ -4,26 +4,35 @@ import { useState } from "react"
 import { Sidebar } from "@/components/atlas/sidebar"
 import { MobileNav } from "@/components/atlas/mobile-nav"
 import { ChatScreen } from "@/components/atlas/chat-screen"
-import { PositionsScreen } from "@/components/atlas/positions-screen"
-import { BalanceScreen } from "@/components/atlas/balance-screen"
-import { ActivityScreen } from "@/components/atlas/activity-screen"
-
-type View = "chat" | "positions" | "balance" | "activity"
+import { StrategyScreen } from "@/components/atlas/strategy-screen"
+import { PortfolioScreen } from "@/components/atlas/portfolio-screen"
+import { UserScreen } from "@/components/atlas/user-screen"
+import type { AtlasView } from "@/components/atlas/view-types"
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<View>("chat")
+  const [activeView, setActiveView] = useState<AtlasView>("chat")
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      <Sidebar
+        activeView={activeView}
+        onNavigate={setActiveView}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
       <MobileNav activeView={activeView} onNavigate={setActiveView} />
 
-      <main className="lg:ml-[260px] h-screen pb-16 lg:pb-0">
+      <main
+        className={`h-screen pb-16 lg:pb-0 transition-[margin] duration-300 ease-in-out ${
+          sidebarCollapsed ? "lg:ml-[68px]" : "lg:ml-[280px]"
+        }`}
+      >
         <div className="h-full transition-opacity duration-200">
           {activeView === "chat" && <ChatScreen />}
-          {activeView === "positions" && <PositionsScreen />}
-          {activeView === "balance" && <BalanceScreen />}
-          {activeView === "activity" && <ActivityScreen />}
+          {activeView === "strategy" && <StrategyScreen />}
+          {activeView === "portfolio" && <PortfolioScreen />}
+          {activeView === "user" && <UserScreen />}
         </div>
       </main>
     </div>
