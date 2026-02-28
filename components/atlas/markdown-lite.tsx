@@ -1,6 +1,7 @@
 "use client"
 
 type MarkdownLiteVariant = "default" | "atlas-gold"
+type MarkdownLiteSurface = "panel" | "none"
 
 type MarkdownBlock =
   | { type: "heading"; level: number; text: string }
@@ -206,23 +207,28 @@ function themeClasses(variant: MarkdownLiteVariant) {
 export function MarkdownLite({
   markdown,
   variant = "default",
+  surface = "panel",
+  className,
 }: {
   markdown: string
   variant?: MarkdownLiteVariant
+  surface?: MarkdownLiteSurface
+  className?: string
 }) {
   const blocks = parseMarkdownLite(markdown)
   const theme = themeClasses(variant)
 
   if (!blocks.length) {
+    if (surface === "none") return null
     return (
-      <div className={theme.panel}>
+      <div className={className ? `${theme.panel} ${className}` : theme.panel}>
         <p className={theme.empty}>No content to preview.</p>
       </div>
     )
   }
 
-  return (
-    <div className={theme.panel}>
+  const content = (
+    <div className={surface === "none" ? className : className ? `${theme.panel} ${className}` : theme.panel}>
       <div className="space-y-4">
         {blocks.map((block, index) => {
           if (block.type === "heading") {
@@ -318,6 +324,8 @@ export function MarkdownLite({
       </div>
     </div>
   )
+
+  return content
 }
 
 export function RawMarkdownPanel({

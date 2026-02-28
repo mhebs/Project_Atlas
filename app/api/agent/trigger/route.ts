@@ -2,22 +2,20 @@ import { NextResponse } from "next/server"
 import { spawn } from "child_process"
 import { readFileSync } from "fs"
 import path from "path"
+import { getRepoRoot } from "@/lib/server/config"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const MAX_MESSAGE_LENGTH = 2000
 
-// Workspace root is one level up from Project_Atlas (Next.js cwd)
-const workspaceRoot = path.resolve(process.cwd(), "..")
-
 /**
  * Parse the workspace .env file so the spawned agent process
  * gets vars like LLM_API_KEY that Next.js doesn't load.
  */
-function loadWorkspaceEnv(): Record<string, string> {
+function loadWorkspaceEnv(repoRoot: string): Record<string, string> {
   try {
-    const raw = readFileSync(path.join(workspaceRoot, ".env"), "utf-8")
+    const raw = readFileSync(path.join(repoRoot, ".env"), "utf-8")
     const vars: Record<string, string> = {}
     for (const line of raw.split("\n")) {
       const trimmed = line.trim()
@@ -50,12 +48,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const agentScript = path.join(workspaceRoot, "packages", "agent", "dist", "index.js")
-    const envVars = { ...process.env, ...loadWorkspaceEnv() }
+    const repoRoot = getRepoRoot()
+    const agentScript = path.join(repoRoot, "packages", "agent", "dist", "index.js")
+    const envVars = { ...process.env, ...loadWorkspaceEnv(repoRoot) }
 
     // Spawn detached so the agent outlives this request
     const child = spawn("node", [agentScript, "--once", `--trigger=${message}`], {
-      cwd: workspaceRoot,
+      cwd: repoRoot,
       detached: true,
       stdio: "ignore",
       env: envVars,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { LatestSessionResponse, SessionTranscript, TranscriptMessage } from "@/lib/atlas-types"
+import { MarkdownLite } from "./markdown-lite"
 
 function isNearBottom(element: HTMLDivElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight < 64
@@ -141,9 +142,7 @@ function MessageBubble({
 
         {visibleContent && (
           <div className="max-w-[85%] rounded-2xl border-l-2 border-[#c8a43a]/20 bg-[#13110e]/80 px-5 py-4 lg:max-w-[70%]">
-            <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-[#d9d1c3]/90">
-              {visibleContent}
-            </div>
+            <MarkdownLite markdown={visibleContent} variant="atlas-gold" surface="none" className="break-words" />
           </div>
         )}
         <span className="block font-mono text-[10px] text-[#d9d1c3]/40">
