@@ -1,4 +1,5 @@
 import { getLatestSessionFile, getLatestSessionSnapshot, readSessionSnapshot } from "@/lib/server/sessions"
+import type { TranscriptMessage } from "@/lib/atlas-types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -8,10 +9,21 @@ type PollState = {
   messageCount: number
   status: string | null
   endedAt: string | null
+  messageSignatures: string[]
 }
 
 function sseEvent(event: string, payload: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`
+}
+
+function messageSignature(message: TranscriptMessage) {
+  return JSON.stringify({
+    index: message.index,
+    role: message.role,
+    content: message.content,
+    reasoning: message.reasoning,
+    toolCalls: message.toolCalls,
+  })
 }
 
 export async function GET() {
@@ -26,6 +38,7 @@ export async function GET() {
     messageCount: 0,
     status: null,
     endedAt: null,
+    messageSignatures: [],
   }
 
   const stream = new ReadableStream<Uint8Array>({
@@ -48,6 +61,7 @@ export async function GET() {
               state.messageCount = 0
               state.status = null
               state.endedAt = null
+              state.messageSignatures = []
               emptySent = false
             }
 
@@ -67,18 +81,39 @@ export async function GET() {
             state.messageCount = snapshot.messageCount
             state.status = snapshot.status
             state.endedAt = snapshot.endedAt
+            state.messageSignatures = snapshot.messages.map(messageSignature)
             send("session", snapshot)
             return
           }
 
-          if (snapshot.messageCount > state.messageCount) {
+          if (snapshot.messageCount < state.messageCount) {
+            state.messageCount = snapshot.messageCount
+            state.messageSignatures = snapshot.messages.map(messageSignature)
+            send("session", snapshot)
+            return
+          }
+
+          const changedMessages: TranscriptMessage[] = []
+          const nextSignatures = [...state.messageSignatures]
+
+          for (const message of snapshot.messages) {
+            const signature = messageSignature(message)
+            if (nextSignatures[message.index] !== signature) {
+              changedMessages.push(message)
+              nextSignatures[message.index] = signature
+            }
+          }
+
+          if (changedMessages.length > 0) {
             send("messages", {
               sessionId: snapshot.sessionId,
               messageCount: snapshot.messageCount,
-              messages: snapshot.messages.slice(state.messageCount),
+              messages: changedMessages,
             })
-            state.messageCount = snapshot.messageCount
           }
+
+          state.messageCount = snapshot.messageCount
+          state.messageSignatures = nextSignatures.slice(0, snapshot.messageCount)
 
           if (snapshot.status !== state.status || snapshot.endedAt !== state.endedAt) {
             state.status = snapshot.status
@@ -102,7 +137,7 @@ export async function GET() {
 
       interval = setInterval(() => {
         void tick()
-      }, 1000)
+      }, 200)
 
       pingInterval = setInterval(() => {
         send("ping", { ts: Date.now() })

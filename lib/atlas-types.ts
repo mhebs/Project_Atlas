@@ -1,4 +1,4 @@
-export type WorkspaceDocName = "STRATEGY.md" | "PORTFOLIO.md" | "USER.md"
+export type WorkspaceDocName = "STRATEGY.md" | "PORTFOLIO.md" | "ACCOUNTS.md" | "USER.md"
 
 export interface WorkspaceDoc {
   name: WorkspaceDocName
@@ -58,6 +58,7 @@ export interface TranscriptMessage {
   timestamp: string
   role: TranscriptRole
   content: string
+  reasoning: string | null
   toolCalls: TranscriptToolCall[]
   toolCallId: string | null
   name: string | null

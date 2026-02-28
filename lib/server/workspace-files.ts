@@ -6,6 +6,7 @@ import { getWorkspaceRoot } from "./config"
 const ALLOWED_WORKSPACE_FILES = new Set<WorkspaceDocName>([
   "STRATEGY.md",
   "PORTFOLIO.md",
+  "ACCOUNTS.md",
   "USER.md",
 ])
 

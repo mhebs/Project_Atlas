@@ -21,6 +21,7 @@ interface RawToolCall {
 interface RawLLMMessage {
   role?: "system" | "user" | "assistant" | "tool"
   content?: string | null
+  reasoning?: string | null
   tool_calls?: RawToolCall[]
   tool_call_id?: string
   name?: string
@@ -107,6 +108,7 @@ function normalizeMessages(rawMessages: RawTimestampedMessage[] | undefined): Tr
     timestamp: entry.timestamp || new Date(0).toISOString(),
     role: entry.message?.role || "assistant",
     content: entry.message?.content || "",
+    reasoning: entry.message?.reasoning ?? null,
     toolCalls: normalizeToolCalls(entry.message?.tool_calls),
     toolCallId: entry.message?.tool_call_id || null,
     name: entry.message?.name || null,
@@ -149,4 +151,3 @@ export async function getLatestSessionSnapshot(): Promise<LatestSessionResponse>
 
   return readSessionSnapshot(latest.filePath, latest.mtimeMs)
 }
-

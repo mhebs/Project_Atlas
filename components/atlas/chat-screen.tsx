@@ -1,10 +1,21 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { LatestSessionResponse, SessionTranscript, TranscriptMessage } from "@/lib/atlas-types"
 
 function isNearBottom(element: HTMLDivElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight < 64
+}
+
+function upsertMessages(
+  existing: TranscriptMessage[],
+  updates: TranscriptMessage[],
+): TranscriptMessage[] {
+  const next = [...existing]
+  for (const message of updates) {
+    next[message.index] = message
+  }
+  return next.filter((message): message is TranscriptMessage => Boolean(message))
 }
 
 /* Compass avatar for assistant messages */
@@ -22,30 +33,6 @@ function CompassAvatar() {
   )
 }
 
-/* Strip common markdown formatting for clean display */
-function cleanMarkdown(text: string) {
-  return text
-    .replace(/<think>[\s\S]*?<\/think>/gi, "")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^---+$/gm, "")
-    .replace(/^\|[\s\S]*?\|$/gm, (match) => {
-      /* Convert table rows to readable text, skip separator rows */
-      if (/^\|\s*[-:]+/.test(match)) return ""
-      return match
-        .split("|")
-        .map((cell) => cell.trim())
-        .filter(Boolean)
-        .join("  ·  ")
-    })
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/__(.+?)__/g, "$1")
-    .replace(/_(.+?)_/g, "$1")
-    .replace(/`(.+?)`/g, "$1")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim()
-}
-
 function formatTime(timestamp: string) {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: "numeric",
@@ -53,16 +40,41 @@ function formatTime(timestamp: string) {
   })
 }
 
-function MessageBubble({ message }: { message: TranscriptMessage }) {
+function splitThinkBlocks(content: string): { reasoning: string | null; visibleContent: string } {
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/gi
+  const reasoningParts: string[] = []
+  let match: RegExpExecArray | null = null
+
+  while ((match = thinkRegex.exec(content)) !== null) {
+    const part = (match[1] || "").trim()
+    if (part) reasoningParts.push(part)
+  }
+
+  const visibleContent = content.replace(thinkRegex, "").trim()
+  return {
+    reasoning: reasoningParts.length > 0 ? reasoningParts.join("\n\n") : null,
+    visibleContent,
+  }
+}
+
+function MessageBubble({
+  message,
+  isThinkingOpen,
+  isStreaming,
+  onToggleThinking,
+}: {
+  message: TranscriptMessage
+  isThinkingOpen: boolean
+  isStreaming: boolean
+  onToggleThinking: () => void
+}) {
   const isUser = message.role === "user"
   const isAssistant = message.role === "assistant"
   const isTool = message.role === "tool"
   const isSystem = message.role === "system"
 
-  /* Hide system and tool messages for a clean conversational view */
   if (isSystem || isTool) return null
 
-  /* User message */
   if (isUser) {
     return (
       <div className="mb-6">
@@ -74,7 +86,7 @@ function MessageBubble({ message }: { message: TranscriptMessage }) {
         <div className="flex justify-end">
           <div className="max-w-[85%] rounded-2xl border border-[#c8a43a]/10 bg-[#1e1c17]/80 px-5 py-4 lg:max-w-[70%]">
             <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-[#f3ead8]">
-              {message.content || "(no content)"}
+              {message.content}
             </p>
           </div>
         </div>
@@ -87,15 +99,12 @@ function MessageBubble({ message }: { message: TranscriptMessage }) {
     )
   }
 
-  /* Strip <think> blocks and markdown formatting from assistant content */
-  const visibleContent = isAssistant
-    ? cleanMarkdown(message.content)
-    : message.content
+  const parsed = splitThinkBlocks(message.content)
+  const reasoningText = message.reasoning ?? parsed.reasoning
+  const visibleContent = parsed.visibleContent
+  const hasReasoning = Boolean(reasoningText && reasoningText.length > 0)
+  if (isAssistant && !visibleContent && !hasReasoning && message.toolCalls.length > 0) return null
 
-  /* Skip assistant messages that are only think blocks / tool calls with no visible text */
-  if (isAssistant && !visibleContent && message.toolCalls.length > 0) return null
-
-  /* Assistant message */
   return (
     <div className="mb-6">
       <div className="flex items-center gap-3">
@@ -104,13 +113,40 @@ function MessageBubble({ message }: { message: TranscriptMessage }) {
           Meridian
         </p>
       </div>
-      <div className="mt-2 pl-[52px]">
-        <div className="max-w-[85%] rounded-2xl border-l-2 border-[#c8a43a]/20 bg-[#13110e]/80 px-5 py-4 lg:max-w-[70%]">
-          <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-[#d9d1c3]/90">
-            {visibleContent || "(no content)"}
+      <div className="mt-2 space-y-2 pl-[52px]">
+        {hasReasoning && (
+          <div className="max-w-[85%] rounded-2xl border border-[#2b3140]/45 bg-[#0b1018]/65 lg:max-w-[70%]">
+            <button
+              type="button"
+              onClick={onToggleThinking}
+              className="flex w-full items-center justify-between px-4 py-2.5 text-left"
+            >
+              <span className="font-mono text-[11px] text-[#8a93a6]/70">
+                Thought
+                {isStreaming ? " · live" : ""}
+              </span>
+              <span className="font-mono text-[11px] text-[#7d8698]/55">
+                {isThinkingOpen ? "▾" : "▸"}
+              </span>
+            </button>
+            {isThinkingOpen && (
+              <div className="border-t border-[#2f3546]/55 px-4 py-3">
+                <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[#7f889b]/68">
+                  {reasoningText}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-        <span className="mt-2 block font-mono text-[10px] text-[#d9d1c3]/40">
+        )}
+
+        {visibleContent && (
+          <div className="max-w-[85%] rounded-2xl border-l-2 border-[#c8a43a]/20 bg-[#13110e]/80 px-5 py-4 lg:max-w-[70%]">
+            <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-[#d9d1c3]/90">
+              {visibleContent}
+            </div>
+          </div>
+        )}
+        <span className="block font-mono text-[10px] text-[#d9d1c3]/40">
           {formatTime(message.timestamp)}
         </span>
       </div>
@@ -122,13 +158,81 @@ export function ChatScreen() {
   const [snapshot, setSnapshot] = useState<LatestSessionResponse | null>(null)
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [input, setInput] = useState("")
+  const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "closed">(
     "connecting",
   )
+  const [expandedThinkingByIndex, setExpandedThinkingByIndex] = useState<Record<number, boolean>>(
+    {},
+  )
   const scrollRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
+  const previousStreamingAssistantIndexRef = useRef<number | null>(null)
+
+  const activeStreamingAssistantIndex = useMemo(() => {
+    if (!snapshot || snapshot.status !== "running") return null
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]?.role === "assistant") {
+        return messages[i].index
+      }
+    }
+    return null
+  }, [messages, snapshot])
+
+  const streamRenderKey = useMemo(() => {
+    const lastAssistant = [...messages].reverse().find((message) => message.role === "assistant")
+    return [
+      messages.length,
+      lastAssistant?.index ?? -1,
+      lastAssistant?.content.length ?? 0,
+      lastAssistant?.reasoning?.length ?? 0,
+    ].join(":")
+  }, [messages])
+
+  useEffect(() => {
+    const previous = previousStreamingAssistantIndexRef.current
+
+    if (previous !== null && previous !== activeStreamingAssistantIndex) {
+      setExpandedThinkingByIndex((prev) => ({
+        ...prev,
+        [previous]: false,
+      }))
+    }
+
+    if (activeStreamingAssistantIndex !== null) {
+      setExpandedThinkingByIndex((prev) => ({
+        ...prev,
+        [activeStreamingAssistantIndex]: true,
+      }))
+    }
+
+    previousStreamingAssistantIndexRef.current = activeStreamingAssistantIndex
+  }, [activeStreamingAssistantIndex])
+
+  const handleSend = async () => {
+    const text = input.trim()
+    if (!text || sending) return
+
+    setSending(true)
+    setInput("")
+    try {
+      const res = await fetch("/api/agent/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || "Failed to send message")
+      }
+    } catch {
+      setError("Failed to send message")
+    } finally {
+      setSending(false)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -179,24 +283,14 @@ export function ChatScreen() {
           messages: TranscriptMessage[]
         }
 
-        setMessages((prev) => {
-          const next = [...prev]
-          for (const message of payload.messages) {
-            if (typeof next[message.index] === "undefined") {
-              next.push(message)
-            } else {
-              next[message.index] = message
-            }
-          }
-          return next
-        })
+        setMessages((prev) => upsertMessages(prev, payload.messages))
 
         setSnapshot((prev) => {
           if (!prev || prev.sessionId !== payload.sessionId) return prev
           return {
             ...prev,
             messageCount: payload.messageCount,
-            messages: [...prev.messages, ...payload.messages],
+            messages: upsertMessages(prev.messages, payload.messages),
           } as SessionTranscript
         })
       })
@@ -240,11 +334,10 @@ export function ChatScreen() {
     const scroller = scrollRef.current
     if (!scroller || !shouldAutoScrollRef.current) return
     scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" })
-  }, [messages.length])
+  }, [streamRenderKey])
 
   return (
     <div className="flex h-full flex-col bg-[#060606]">
-      {/* Status bar — minimal */}
       {(loading || error || connectionState === "live") && (
         <div className="flex items-center justify-end gap-2 px-6 pt-4 pb-1">
           {connectionState === "live" && (
@@ -262,7 +355,6 @@ export function ChatScreen() {
         </div>
       )}
 
-      {/* Messages */}
       <div
         ref={scrollRef}
         onScroll={(event) => {
@@ -280,7 +372,7 @@ export function ChatScreen() {
                 Meridian
               </p>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#d9d1c3]/50">
-                No conversation yet. Run the agent to start a session and messages will appear here.
+                No conversation yet. Send a message to start a session.
               </p>
             </div>
           </div>
@@ -290,30 +382,47 @@ export function ChatScreen() {
               <MessageBubble
                 key={`${message.index}-${message.timestamp}-${message.role}`}
                 message={message}
+                isStreaming={activeStreamingAssistantIndex === message.index}
+                isThinkingOpen={Boolean(expandedThinkingByIndex[message.index])}
+                onToggleThinking={() => {
+                  setExpandedThinkingByIndex((prev) => ({
+                    ...prev,
+                    [message.index]: !prev[message.index],
+                  }))
+                }}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* Composer */}
       <div className="px-6 pb-6 pt-2">
         <div className="mx-auto flex max-w-3xl items-end gap-3">
           <div className="flex-1 rounded-2xl border border-[#c8a43a]/15 bg-[#13110e]/80 px-5 py-4">
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Type your response..."
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault()
+                  void handleSend()
+                }
+              }}
+              placeholder="Type your message..."
               rows={1}
               className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[#f7eedb] placeholder:text-[#d9d1c3]/35 focus:outline-none"
             />
           </div>
           <button
             type="button"
-            disabled
-            className="flex h-12 w-12 shrink-0 cursor-not-allowed items-center justify-center rounded-full bg-[#d4af37]/80 transition-colors"
+            disabled={sending || !input.trim()}
+            onClick={() => void handleSend()}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors ${
+              sending || !input.trim()
+                ? "cursor-not-allowed bg-[#d4af37]/40"
+                : "cursor-pointer bg-[#d4af37]/80 hover:bg-[#d4af37]"
+            }`}
             aria-label="Send"
-            title="Send is disabled in phase 1"
           >
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
               <path
