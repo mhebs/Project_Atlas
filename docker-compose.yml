@@ -1,0 +1,13 @@
+services:
+  atlas:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - ATLAS_REPO_ROOT=/data
+      - ATLAS_WORKSPACE_DIR=workspace
+    volumes:
+      # Mount the parent repo so the app can read workspace files
+      # and spawn the agent process
+      - ../:/data
+    restart: unless-stopped

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { spawn } from "node:child_process"
 import type {
   StrategyPresentation,
   StrategyPresentationMode,
@@ -275,16 +276,23 @@ function buildHeuristicPresentation(markdown: string, cards: StrategySummaryCard
 }
 
 function hashKeyForTranslation(markdown: string) {
-  const provider = (process.env.LLM_PROVIDER ?? "openai").trim().toLowerCase()
-  const model = (process.env.LLM_MODEL ?? "gpt-4o").trim()
+  const provider = (process.env.LLM_PROVIDER ?? "claude-cli").trim().toLowerCase()
+  const model = (process.env.LLM_MODEL ?? "sonnet").trim()
+  const fallbackModel = (process.env.LLM_FALLBACK_MODEL ?? "haiku").trim()
   const base = (process.env.LLM_BASE_URL ?? "").trim()
+  const claudePath = (process.env.LLM_CLAUDE_PATH ?? "claude").trim()
   const digest = createHash("sha256").update(markdown).digest("hex")
-  return `${provider}:${model}:${base}:${digest}`
+  return `${provider}:${model}:${fallbackModel}:${base}:${claudePath}:${digest}`
 }
 
 function isOpenAICompatibleProvider() {
-  const provider = (process.env.LLM_PROVIDER ?? "openai").trim().toLowerCase()
+  const provider = (process.env.LLM_PROVIDER ?? "claude-cli").trim().toLowerCase()
   return provider === "openai" || provider === "local"
+}
+
+function isClaudeCliProvider() {
+  const provider = (process.env.LLM_PROVIDER ?? "claude-cli").trim().toLowerCase()
+  return provider === "claude-cli"
 }
 
 function openAIChatCompletionsUrl() {
@@ -379,19 +387,205 @@ function coerceLLMResponseToTranslation(
   return { cards: translatedCards, presentation }
 }
 
+function parseUnknownJson(input: string): unknown {
+  try {
+    return JSON.parse(input)
+  } catch {
+    const extracted = extractJsonString(input)
+    if (!extracted) return null
+    try {
+      return JSON.parse(extracted)
+    } catch {
+      return null
+    }
+  }
+}
+
+function parseClaudeStructuredPayload(payload: unknown): Record<string, unknown> | null {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    return payload as Record<string, unknown>
+  }
+  if (typeof payload !== "string") return null
+  const parsed = parseUnknownJson(payload)
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+  return parsed as Record<string, unknown>
+}
+
+function claudeSummarySchema() {
+  return JSON.stringify({
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      headline: { type: "string" },
+      subheadline: { type: "string" },
+      panelTitle: { type: "string" },
+      panelSubtitle: { type: "string" },
+      footnote: { type: "string" },
+      tiles: {
+        type: "array",
+        minItems: 4,
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            label: { type: "string" },
+            value: { type: "string" },
+            detail: { type: "string" },
+          },
+          required: ["label", "value", "detail"],
+        },
+      },
+      cards: {
+        type: "array",
+        minItems: 4,
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: "string" },
+            kind: { enum: ["table", "list", "text", "mixed"] },
+            summary: { type: "string" },
+            excerpt: { type: "string" },
+          },
+          required: ["title", "kind", "summary", "excerpt"],
+        },
+      },
+    },
+    required: ["headline", "subheadline", "panelTitle", "panelSubtitle", "footnote", "tiles", "cards"],
+  })
+}
+
+async function runClaudeJsonCommand(
+  claudePath: string,
+  args: string[],
+  prompt: string,
+  timeoutMs: number,
+): Promise<string | null> {
+  return new Promise<string | null>((resolve) => {
+    const child = spawn(claudePath, args, {
+      cwd: process.cwd(),
+      stdio: ["pipe", "pipe", "pipe"],
+    })
+
+    child.stdout.setEncoding("utf-8")
+    child.stderr.setEncoding("utf-8")
+
+    let stdout = ""
+    let stderr = ""
+    let timedOut = false
+
+    const timeout = setTimeout(() => {
+      timedOut = true
+      child.kill("SIGKILL")
+    }, timeoutMs)
+
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk
+    })
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk
+    })
+
+    child.on("error", () => {
+      clearTimeout(timeout)
+      resolve(null)
+    })
+
+    child.on("close", (code) => {
+      clearTimeout(timeout)
+      if (timedOut || code !== 0) {
+        void stderr
+        resolve(null)
+        return
+      }
+      resolve(stdout)
+    })
+
+    child.stdin.write(prompt)
+    child.stdin.end()
+  })
+}
+
+async function translateWithClaudeCli(markdown: string, fallbackCards: StrategySummaryCard[]): Promise<TranslationResult | null> {
+  const claudePath = (process.env.LLM_CLAUDE_PATH ?? "claude").trim() || "claude"
+  const model = (process.env.LLM_MODEL ?? "sonnet").trim()
+  const fallbackModel = (process.env.LLM_FALLBACK_MODEL ?? "haiku").trim()
+  const timeoutMs = Number.parseInt((process.env.LLM_TIMEOUT_MS ?? "180000").trim(), 10) || 180000
+  const promptMarkdown = truncate(stripHtmlComments(markdown), 12000)
+
+  const prompt = [
+    "Convert STRATEGY.md markdown into UI-friendly summary JSON.",
+    "Preserve facts and wording intent. Do not invent numbers or constraints.",
+    "Return structured output that matches the JSON schema exactly.",
+    "",
+    "Markdown:",
+    promptMarkdown,
+  ].join("\\n")
+
+  const args = [
+    "-p",
+    "--model",
+    model,
+    "--output-format",
+    "json",
+    "--json-schema",
+    claudeSummarySchema(),
+    "--tools",
+    "",
+    "--no-session-persistence",
+  ]
+
+  if (fallbackModel) {
+    args.push("--fallback-model", fallbackModel)
+  }
+
+  const stdout = await runClaudeJsonCommand(claudePath, args, prompt, timeoutMs)
+  if (!stdout) return null
+
+  let payload: Record<string, unknown>
+  try {
+    payload = JSON.parse(stdout) as Record<string, unknown>
+  } catch {
+    return null
+  }
+
+  if (payload.is_error === true) {
+    return null
+  }
+
+  const structured =
+    parseClaudeStructuredPayload(payload.structured_output)
+    ?? parseClaudeStructuredPayload(payload.result)
+  if (!structured) return null
+
+  return coerceLLMResponseToTranslation(structured, markdown, fallbackCards)
+}
+
 async function translateMarkdownToPresentation(markdown: string, fallbackCards: StrategySummaryCard[]): Promise<TranslationResult | null> {
   if (!markdown.trim()) return null
-  if (!isOpenAICompatibleProvider()) return null
 
-  const provider = (process.env.LLM_PROVIDER ?? "openai").trim().toLowerCase()
-  const apiKey = (process.env.LLM_API_KEY ?? "").trim()
-  if (!apiKey && provider !== "local") return null
-
+  const provider = (process.env.LLM_PROVIDER ?? "claude-cli").trim().toLowerCase()
   const cacheKey = hashKeyForTranslation(markdown)
   const cached = translationCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) {
     return cached.result
   }
+
+  if (isClaudeCliProvider()) {
+    const translated = await translateWithClaudeCli(markdown, fallbackCards)
+    translationCache.set(cacheKey, {
+      result: translated,
+      expiresAt: Date.now() + (translated ? 10 * 60_000 : 30_000),
+    })
+    return translated
+  }
+
+  if (!isOpenAICompatibleProvider()) return null
+
+  const apiKey = (process.env.LLM_API_KEY ?? "").trim()
+  if (!apiKey && provider !== "local") return null
 
   const model = (process.env.LLM_MODEL ?? "gpt-4o").trim()
   const promptMarkdown = truncate(stripHtmlComments(markdown), 12000)

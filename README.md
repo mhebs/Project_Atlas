@@ -203,3 +203,27 @@ The CLI agent continues to work without this frontend.
 - The chat screen streams the latest session transcript via SSE by reading `workspace/sessions/*.json`.
 - Phase 1 is intentionally read-focused: chat composer is present but sending is stubbed.
 - Strategy, Portfolio, and User screens are markdown-driven views over the workspace files.
+
+## Claude CLI Runtime Requirements
+
+The agent defaults to `LLM_PROVIDER=claude-cli`.
+
+### Local
+
+1. Install Claude CLI:
+   - `npm install -g @anthropic-ai/claude-code`
+2. Authenticate:
+   - `claude auth login`
+3. Verify:
+   - `./scripts/claude-preflight.sh`
+
+### Docker
+
+- The container installs Claude CLI and runs preflight at startup.
+- Agent startup fails if `claude auth status --json` is not authenticated.
+- Provide auth context to the container before running agent jobs.
+
+### CI
+
+- Run `./scripts/ci-claude-preflight.sh` before any agent execution steps.
+- The preflight hard-fails CI when Claude CLI is missing or unauthenticated.
