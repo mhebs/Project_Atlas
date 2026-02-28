@@ -87,3 +87,35 @@ export interface EmptySessionTranscript {
 }
 
 export type LatestSessionResponse = SessionTranscript | EmptySessionTranscript
+
+export type DebugResetMode = "full" | "partial_market_closed"
+
+export interface DebugResetPosition {
+  symbol: string
+  qty: number
+  avgEntryPrice: number
+  currentPrice: number
+  marketValue: number
+  unrealizedPl: number
+}
+
+export interface DebugResetBrokerSnapshot {
+  marketOpen: boolean
+  timestamp: string
+  equity: number
+  cash: number
+  buyingPower: number
+  dayPnl: number | null
+  positions: DebugResetPosition[]
+}
+
+export interface DebugResetResponse {
+  ok: boolean
+  mode: DebugResetMode | null
+  broker: DebugResetBrokerSnapshot | null
+  filesReset: string[]
+  sessionsDeleted: number
+  tradesLogCleared: boolean
+  warnings: string[]
+  error: string | null
+}

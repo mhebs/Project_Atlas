@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import type { WorkspaceDoc, WorkspaceDocName } from "@/lib/atlas-types"
 import { MarkdownLite, RawMarkdownPanel } from "./markdown-lite"
 
@@ -14,11 +14,17 @@ export function WorkspaceDocScreen({
   title,
   subtitle,
   pollMs = 5000,
+  refreshToken = 0,
+  headerActions,
+  topBanner,
 }: {
   fileName: WorkspaceDocName
   title: string
   subtitle: string
   pollMs?: number
+  refreshToken?: number
+  headerActions?: ReactNode
+  topBanner?: ReactNode
 }) {
   const [doc, setDoc] = useState<WorkspaceDoc | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,7 +64,7 @@ export function WorkspaceDocScreen({
       mountedRef.current = false
       clearInterval(interval)
     }
-  }, [load, pollMs])
+  }, [load, pollMs, refreshToken])
 
   const isPlaceholder = /not yet configured|awaiting user input/i.test(doc?.content || "")
 
@@ -70,16 +76,20 @@ export function WorkspaceDocScreen({
             <h2 className="font-serif text-2xl text-foreground">{title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
           </div>
-          <button
-            onClick={() => void load()}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {headerActions}
+            <button
+              onClick={() => void load()}
+              className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-mono text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
+        {topBanner && <div className="mb-4">{topBanner}</div>}
         <div className="mb-4 rounded-lg border border-border bg-card p-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
             <span className="font-mono uppercase tracking-wider text-muted-foreground">
@@ -115,4 +125,3 @@ export function WorkspaceDocScreen({
     </div>
   )
 }
-
