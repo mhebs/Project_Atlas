@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  Activity,
   Cable,
   Compass,
   MessageSquare,
@@ -18,6 +19,7 @@ const navItems: {
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "strategy", label: "Strategy", icon: ScrollText },
   { id: "portfolio", label: "Portfolio", icon: Wallet },
+  { id: "activity", label: "Activity", icon: Activity },
   { id: "accounts", label: "Accounts", icon: Cable },
   { id: "user", label: "User", icon: UserRound },
 ]

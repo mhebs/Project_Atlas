@@ -1,174 +1,166 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import type {
+  ActivityResponse,
+  ActivityDay,
+  ActivityEvent,
+  ActivityEventKind,
+  SessionActivityEvent,
+  TradeActivityEvent,
+  WakeAuditActivityEvent,
+} from "@/lib/atlas-types"
 
-type ActivityType = "trade" | "analysis" | "alert" | "system"
+/* ------------------------------------------------------------------ */
+/*  Filter config                                                      */
+/* ------------------------------------------------------------------ */
 
-interface ActivityEntry {
-  id: number
-  type: ActivityType
-  title: string
-  detail: string
-  reasoning: string
-  guardrail?: string
-  expandedDetails?: string
-  timestamp: string
-}
+type FilterKind = "all" | ActivityEventKind
 
-const activities: ActivityEntry[] = [
-  {
-    id: 1,
-    type: "trade",
-    title: "Trade Executed",
-    detail: "AAPL — Opened 25 shares",
-    reasoning:
-      "Price retraced to defined entry band within growth allocation strategy.",
-    guardrail: "Drawdown risk within acceptable range.",
-    expandedDetails:
-      "Entry price: $182.14. Order type: Market. Allocation: 18.2% of portfolio. Strategy alignment: Long-term growth core position.",
-    timestamp: "2026-02-24 14:32:07",
-  },
-  {
-    id: 2,
-    type: "analysis",
-    title: "Market Analysis",
-    detail: "Weekly sector rotation review completed",
-    reasoning:
-      "Technology sector continues to show relative strength against broader market indices. Maintaining current allocation.",
-    expandedDetails:
-      "Sectors reviewed: Technology, Healthcare, Financials, Energy, Consumer Discretionary. No rebalancing triggered.",
-    timestamp: "2026-02-24 09:15:00",
-  },
-  {
-    id: 3,
-    type: "trade",
-    title: "Trade Executed",
-    detail: "MSFT — Opened 10 shares",
-    reasoning:
-      "Earnings beat consensus estimates. Position initiated within diversified tech allocation framework.",
-    guardrail: "Position size within 12% single-stock limit.",
-    expandedDetails:
-      "Entry price: $412.55. Order type: Limit. Allocation: 16.6% of portfolio. Strategy alignment: Growth with quality bias.",
-    timestamp: "2026-02-23 11:44:22",
-  },
-  {
-    id: 4,
-    type: "alert",
-    title: "Risk Alert",
-    detail: "Portfolio drawdown approaching 5% threshold",
-    reasoning:
-      "Current drawdown at 4.8%. Monitoring closely. No action required at this level per strategy parameters.",
-    expandedDetails:
-      "Peak value: $25,104. Current value: $23,899. Drawdown: 4.8%. Guardrail trigger: 15%. Status: Within tolerance.",
-    timestamp: "2026-02-22 16:00:00",
-  },
-  {
-    id: 5,
-    type: "system",
-    title: "System Update",
-    detail: "Strategy parameters updated",
-    reasoning:
-      "User confirmed long-term growth strategy with 15% max drawdown guardrail. Parameters locked.",
-    expandedDetails:
-      "Strategy: Long-Term Growth. Risk cap: 15% max drawdown. Capital allocated: $25,000. Status: Active.",
-    timestamp: "2026-02-21 10:22:15",
-  },
-  {
-    id: 6,
-    type: "trade",
-    title: "Trade Executed",
-    detail: "SPY — Opened 15 shares",
-    reasoning:
-      "Broad market index position to maintain baseline equity exposure while sector-specific analysis continues.",
-    guardrail: "Core index allocation within defined parameters.",
-    expandedDetails:
-      "Entry price: $498.22. Order type: Market. Allocation: 30.1% of portfolio. Strategy alignment: Core index holding.",
-    timestamp: "2026-02-20 13:08:44",
-  },
-]
-
-const filters: { label: string; value: ActivityType | "all" }[] = [
+const filters: { label: string; value: FilterKind }[] = [
   { label: "All", value: "all" },
+  { label: "Sessions", value: "session" },
   { label: "Trades", value: "trade" },
-  { label: "Analysis", value: "analysis" },
-  { label: "Alerts", value: "alert" },
-  { label: "System", value: "system" },
+  { label: "Rules", value: "wake_audit" },
 ]
 
-const typeColors: Record<ActivityType, string> = {
-  trade: "bg-primary text-primary-foreground",
-  analysis: "bg-muted text-foreground",
-  alert: "bg-secondary text-secondary-foreground",
-  system: "bg-muted text-foreground",
+/* ------------------------------------------------------------------ */
+/*  Format helpers                                                     */
+/* ------------------------------------------------------------------ */
+
+function fmtTime(ts: string): string {
+  try {
+    const d = new Date(ts)
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  } catch {
+    return ""
+  }
 }
 
-const accentColors: Record<ActivityType, string> = {
-  trade: "bg-primary",
-  analysis: "bg-muted-foreground",
-  alert: "bg-secondary",
-  system: "bg-border",
+function fmtDuration(ms: number | null): string {
+  if (ms === null) return "—"
+  const secs = Math.floor(ms / 1000)
+  if (secs < 60) return `${secs}s`
+  const mins = Math.floor(secs / 60)
+  const rem = secs % 60
+  return `${mins}m ${rem}s`
 }
 
-function ActivityCard({ entry }: { entry: ActivityEntry }) {
-  const [expanded, setExpanded] = useState(false)
+function fmtUsd(n: number): string {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
 
+/* ------------------------------------------------------------------ */
+/*  Accent colors                                                      */
+/* ------------------------------------------------------------------ */
+
+function sessionAccent(status: string): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-500"
+    case "running":
+      return "bg-amber-400"
+    case "error":
+      return "bg-red-400"
+    default:
+      return "bg-[var(--muted-foreground)]"
+  }
+}
+
+function sessionDot(status: string): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-500"
+    case "running":
+      return "bg-amber-400 animate-pulse"
+    case "error":
+      return "bg-red-400"
+    default:
+      return "bg-[var(--muted-foreground)]"
+  }
+}
+
+function tradeAccent(result: string): string {
+  switch (result) {
+    case "submitted":
+      return "bg-emerald-500"
+    case "blocked":
+      return "bg-red-400"
+    case "awaiting_confirmation":
+      return "bg-amber-400"
+    default:
+      return "bg-[var(--muted-foreground)]"
+  }
+}
+
+function tradeBadgeStyle(result: string): string {
+  switch (result) {
+    case "submitted":
+      return "bg-emerald-500/15 text-emerald-400"
+    case "blocked":
+      return "bg-red-400/15 text-red-400"
+    case "awaiting_confirmation":
+      return "bg-amber-400/15 text-amber-400"
+    default:
+      return "bg-[var(--muted)]/50 text-[var(--muted-foreground)]"
+  }
+}
+
+function auditAccent(auditType: string): string {
+  if (auditType.includes("triggered") || auditType.includes("rule")) {
+    return "bg-amber-400"
+  }
+  return "bg-[var(--muted-foreground)]/50"
+}
+
+/* ------------------------------------------------------------------ */
+/*  Event cards                                                        */
+/* ------------------------------------------------------------------ */
+
+function SessionCard({ event }: { event: SessionActivityEvent }) {
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
+    <div className="activity-card bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
       <div className="flex">
-        {/* Left accent bar */}
-        <div className={`w-1 shrink-0 ${accentColors[entry.type]}`} />
-
+        <div className={`w-1 shrink-0 ${sessionAccent(event.status)}`} />
         <div className="flex-1 p-4">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span
-                  className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded ${typeColors[entry.type]}`}
-                >
-                  {entry.type}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+                  session
+                </span>
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)]">
+                  {event.trigger}
                 </span>
               </div>
-              <h4 className="text-sm font-medium text-foreground">
-                {entry.detail}
-              </h4>
-              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                {entry.reasoning}
-              </p>
-              {entry.guardrail && (
-                <p className="text-xs text-muted-foreground mt-1.5 font-mono">
-                  Guardrail check: {entry.guardrail}
-                </p>
-              )}
-
-              {expanded && entry.expandedDetails && (
-                <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {entry.expandedDetails}
-                  </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${sessionDot(event.status)}`} />
+                  <span className="text-sm font-medium text-[var(--foreground)] capitalize">
+                    {event.status}
+                  </span>
                 </div>
-              )}
-
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-1 mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                {expanded ? (
-                  <>
-                    <ChevronUp className="w-3 h-3" />
-                    <span>Hide details</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-3 h-3" />
-                    <span>View details</span>
-                  </>
-                )}
-              </button>
+                <span className="text-[10px] text-[var(--muted-foreground)]">·</span>
+                <span className="text-xs font-mono text-[var(--muted-foreground)]">
+                  {fmtDuration(event.durationMs)}
+                </span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">·</span>
+                <span className="text-xs font-mono text-[var(--muted-foreground)]">
+                  {event.messageCount} msg{event.messageCount !== 1 ? "s" : ""}
+                </span>
+              </div>
             </div>
-
-            <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap shrink-0">
-              {entry.timestamp.split(" ")[1]}
+            <span className="text-[11px] font-mono text-[var(--muted-foreground)] whitespace-nowrap shrink-0 pt-0.5">
+              {fmtTime(event.timestamp)}
             </span>
           </div>
         </div>
@@ -177,50 +169,284 @@ function ActivityCard({ entry }: { entry: ActivityEntry }) {
   )
 }
 
-export function ActivityScreen() {
-  const [filter, setFilter] = useState<ActivityType | "all">("all")
+function TradeCard({ event }: { event: TradeActivityEvent }) {
+  return (
+    <div className="activity-card bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
+      <div className="flex">
+        <div className={`w-1 shrink-0 ${tradeAccent(event.result)}`} />
+        <div className="flex-1 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] px-2 py-0.5 rounded bg-[var(--muted)] text-[var(--muted-foreground)]">
+                  trade
+                </span>
+                <span
+                  className={`text-[10px] font-mono uppercase tracking-[0.15em] px-2 py-0.5 rounded ${tradeBadgeStyle(event.result)}`}
+                >
+                  {event.result.replace("_", " ")}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-sm font-mono font-semibold text-[var(--foreground)] tracking-wide">
+                  {event.symbol}
+                </span>
+                <span className="text-xs text-[var(--muted-foreground)] uppercase">
+                  {event.side} {event.qty}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs font-mono text-[var(--muted-foreground)]">
+                  @ {fmtUsd(event.estimatedPrice)}
+                </span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">·</span>
+                <span className="text-xs font-mono text-[var(--muted-foreground)]">
+                  {fmtUsd(event.estimatedValue)}
+                </span>
+              </div>
+              {event.reason && (
+                <p className="text-xs text-[var(--muted-foreground)] mt-2 leading-relaxed border-t border-[var(--border)] pt-2">
+                  {event.reason}
+                </p>
+              )}
+            </div>
+            <span className="text-[11px] font-mono text-[var(--muted-foreground)] whitespace-nowrap shrink-0 pt-0.5">
+              {fmtTime(event.timestamp)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-  const filtered =
-    filter === "all"
-      ? activities
-      : activities.filter((a) => a.type === filter)
+function WakeAuditCard({ event }: { event: WakeAuditActivityEvent }) {
+  return (
+    <div className="activity-card bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
+      <div className="flex">
+        <div className={`w-1 shrink-0 ${auditAccent(event.auditType)}`} />
+        <div className="flex-1 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] px-2 py-0.5 rounded bg-amber-400/10 text-amber-400">
+                  {event.auditType.replace(/[._]/g, " ")}
+                </span>
+              </div>
+              {event.summary && (
+                <p className="text-sm text-[var(--foreground)] leading-relaxed">
+                  {event.summary}
+                </p>
+              )}
+              <p className="text-[11px] font-mono text-[var(--muted-foreground)] mt-1.5">
+                actor: {event.actor}
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-[var(--muted-foreground)] whitespace-nowrap shrink-0 pt-0.5">
+              {fmtTime(event.timestamp)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EventCard({ event }: { event: ActivityEvent }) {
+  switch (event.kind) {
+    case "session":
+      return <SessionCard event={event} />
+    case "trade":
+      return <TradeCard event={event} />
+    case "wake_audit":
+      return <WakeAuditCard event={event} />
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Day group                                                          */
+/* ------------------------------------------------------------------ */
+
+function DayGroup({ day, index }: { day: ActivityDay; index: number }) {
+  return (
+    <div
+      className="activity-day-group"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      {/* Date separator */}
+      <div className="flex items-center gap-4 py-4">
+        <div className="flex-1 h-px bg-[var(--border)]" />
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-mono tracking-[0.15em] text-[var(--muted-foreground)]">
+            {day.label}
+          </span>
+          <span className="text-[10px] font-mono text-[var(--muted-foreground)]/50">
+            ({day.events.length})
+          </span>
+        </div>
+        <div className="flex-1 h-px bg-[var(--border)]" />
+      </div>
+
+      {/* Events */}
+      <div className="flex flex-col gap-2.5">
+        {day.events.map((event, i) => (
+          <div
+            key={event.id}
+            className="activity-card-enter"
+            style={{ animationDelay: `${index * 80 + i * 40}ms` }}
+          >
+            <EventCard event={event} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main screen                                                        */
+/* ------------------------------------------------------------------ */
+
+export function ActivityScreen() {
+  const [data, setData] = useState<ActivityResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<FilterKind>("all")
+  const mountedRef = useRef(true)
+
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true)
+      try {
+        const params = filter !== "all" ? `?kind=${filter}` : ""
+        const response = await fetch(`/api/activity${params}`, {
+          cache: "no-store",
+        })
+        const json = await response.json()
+        if (!response.ok)
+          throw new Error(json.error || "Failed to load activity")
+        if (!mountedRef.current) return
+        setData(json as ActivityResponse)
+        setError(null)
+      } catch (e) {
+        if (!mountedRef.current) return
+        setError(e instanceof Error ? e.message : "Failed to load activity")
+      } finally {
+        if (mountedRef.current) setLoading(false)
+      }
+    },
+    [filter],
+  )
+
+  useEffect(() => {
+    mountedRef.current = true
+    void load()
+    const interval = setInterval(() => void load(true), 5000)
+    return () => {
+      mountedRef.current = false
+      clearInterval(interval)
+    }
+  }, [load])
+
+  const hasEvents = data && data.days.length > 0
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 pt-6 pb-2">
-        <h2 className="font-serif text-2xl text-foreground">Agent Activity</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {"Meridian's execution log."}
+      {/* Header */}
+      <div className="px-6 md:px-8 pt-6 pb-2">
+        <h2 className="font-serif text-2xl text-[var(--foreground)]">
+          Activity
+        </h2>
+        <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          {"Meridian's execution log"}
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="px-6 py-3">
+      {/* Filter pills */}
+      <div className="px-6 md:px-8 py-3">
         <div className="flex flex-wrap gap-2">
           {filters.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 text-xs rounded-md border transition-colors cursor-pointer ${
+              className={`px-3.5 py-1.5 text-xs font-mono rounded-md border transition-colors cursor-pointer ${
                 filter === f.value
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-primary/30"
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
+                  : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--primary)]/30"
               }`}
             >
               {f.label}
             </button>
           ))}
+
+          {data && (
+            <span className="flex items-center text-[10px] font-mono text-[var(--muted-foreground)]/60 ml-2">
+              {data.totalEvents} event{data.totalEvents !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Activity List */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div className="flex flex-col gap-3">
-          {filtered.map((entry) => (
-            <ActivityCard key={entry.id} entry={entry} />
-          ))}
+      {/* Error state */}
+      {error && (
+        <div className="mx-6 md:mx-8 mt-1 rounded-md border border-red-400/20 bg-red-400/5 px-4 py-2">
+          <p className="text-xs font-mono text-red-400">{error}</p>
         </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8">
+        {loading && !data ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--secondary)] animate-pulse" />
+              <span className="text-xs font-mono text-[var(--muted-foreground)]">
+                Loading activity...
+              </span>
+            </div>
+          </div>
+        ) : hasEvents ? (
+          <div className="max-w-3xl">
+            {data!.days.map((day, i) => (
+              <DayGroup key={day.date} day={day} index={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-sm text-[var(--muted-foreground)]">
+                No activity recorded yet.
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)]/50 mt-1 font-mono">
+                Events will appear here as Meridian operates.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+      <style>{`
+        .activity-day-group {
+          animation: dayFadeIn 0.4s ease-out both;
+        }
+        .activity-card-enter {
+          animation: cardSlideUp 0.35s ease-out both;
+        }
+        .activity-card {
+          transition: border-color 0.15s ease;
+        }
+        .activity-card:hover {
+          border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+        }
+        @keyframes dayFadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cardSlideUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

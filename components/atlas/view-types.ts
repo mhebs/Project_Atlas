@@ -1,2 +1,2 @@
-export type AtlasView = "chat" | "strategy" | "portfolio" | "accounts" | "user"
+export type AtlasView = "chat" | "strategy" | "portfolio" | "activity" | "accounts" | "user"
 

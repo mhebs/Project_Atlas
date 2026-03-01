@@ -6,6 +6,7 @@ import { MobileNav } from "@/components/atlas/mobile-nav"
 import { ChatScreen } from "@/components/atlas/chat-screen"
 import { StrategyScreen } from "@/components/atlas/strategy-screen"
 import { PortfolioScreen } from "@/components/atlas/portfolio-screen"
+import { ActivityScreen } from "@/components/atlas/activity-screen"
 import { AccountsScreen } from "@/components/atlas/accounts-screen"
 import { UserScreen } from "@/components/atlas/user-screen"
 import type { AtlasView } from "@/components/atlas/view-types"
@@ -33,6 +34,7 @@ export default function Home() {
           {activeView === "chat" && <ChatScreen />}
           {activeView === "strategy" && <StrategyScreen />}
           {activeView === "portfolio" && <PortfolioScreen />}
+          {activeView === "activity" && <ActivityScreen />}
           {activeView === "accounts" && <AccountsScreen />}
           {activeView === "user" && <UserScreen />}
         </div>

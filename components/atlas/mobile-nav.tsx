@@ -1,12 +1,13 @@
 "use client"
 
-import { Cable, MessageSquare, ScrollText, Wallet, UserRound } from "lucide-react"
+import { Activity, Cable, MessageSquare, ScrollText, Wallet, UserRound } from "lucide-react"
 import type { AtlasView } from "./view-types"
 
 const navItems: { id: AtlasView; label: string; icon: React.ElementType }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "strategy", label: "Strategy", icon: ScrollText },
   { id: "portfolio", label: "Portfolio", icon: Wallet },
+  { id: "activity", label: "Activity", icon: Activity },
   { id: "accounts", label: "Accounts", icon: Cable },
   { id: "user", label: "User", icon: UserRound },
 ]

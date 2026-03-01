@@ -119,3 +119,64 @@ export interface DebugResetResponse {
   warnings: string[]
   error: string | null
 }
+
+/* ------------------------------------------------------------------ */
+/*  Activity feed types                                                */
+/* ------------------------------------------------------------------ */
+
+export type ActivityEventKind = "session" | "trade" | "wake_audit"
+
+export interface SessionActivityEvent {
+  kind: "session"
+  id: string
+  timestamp: string
+  sessionId: string
+  trigger: string
+  startedAt: string
+  endedAt: string | null
+  status: "running" | "completed" | "error"
+  messageCount: number
+  durationMs: number | null
+}
+
+export interface TradeActivityEvent {
+  kind: "trade"
+  id: string
+  timestamp: string
+  symbol: string
+  side: string
+  qty: number
+  orderType: string
+  estimatedPrice: number
+  estimatedValue: number
+  result: string
+  reason: string | null
+  orderId: string | null
+}
+
+export interface WakeAuditActivityEvent {
+  kind: "wake_audit"
+  id: string
+  timestamp: string
+  auditType: string
+  actor: string
+  summary: string
+  metadata: Record<string, unknown>
+}
+
+export type ActivityEvent =
+  | SessionActivityEvent
+  | TradeActivityEvent
+  | WakeAuditActivityEvent
+
+export interface ActivityDay {
+  date: string
+  label: string
+  events: ActivityEvent[]
+}
+
+export interface ActivityResponse {
+  days: ActivityDay[]
+  totalEvents: number
+  filters: { kind: string }
+}
