@@ -22,7 +22,6 @@ const STARS: Star[] = [
 
 /** Strip markdown formatting and cap at first sentence, max 120 chars */
 function cleanSubheadline(raw: string): string {
-  // Strip markdown: **bold**, *italic*, __bold__, _italic_, `code`
   let text = raw
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/__(.+?)__/g, "$1")
@@ -31,13 +30,11 @@ function cleanSubheadline(raw: string): string {
     .replace(/`(.+?)`/g, "$1")
     .trim()
 
-  // Cap at first sentence
   const sentenceEnd = text.search(/\. |\.\n/)
   if (sentenceEnd !== -1) {
     text = text.slice(0, sentenceEnd + 1)
   }
 
-  // Hard truncate at 120 chars if still too long
   if (text.length > 120) {
     text = text.slice(0, 117) + "..."
   }
@@ -46,8 +43,7 @@ function cleanSubheadline(raw: string): string {
 }
 
 export function StrategyActivatedOverlay({ onComplete }: { onComplete: () => void }) {
-  const [headline, setHeadline] = useState<string | null>(null)
-  const [subheadline, setSubheadline] = useState<string | null>(null)
+  const [summary, setSummary] = useState<StrategySummaryResponse | null>(null)
   const [exiting, setExiting] = useState(false)
   const mountedRef = useRef(true)
 
@@ -62,8 +58,7 @@ export function StrategyActivatedOverlay({ onComplete }: { onComplete: () => voi
       if (!res.ok) return
       const data = (await res.json()) as StrategySummaryResponse
       if (!mountedRef.current) return
-      setHeadline(data.presentation.headline)
-      setSubheadline(cleanSubheadline(data.presentation.subheadline))
+      setSummary(data)
     } catch {
       // Strategy summary might not have LLM translation yet — show defaults
     }
@@ -77,9 +72,14 @@ export function StrategyActivatedOverlay({ onComplete }: { onComplete: () => voi
     }
   }, [loadSummary])
 
+  const headline = summary?.presentation.headline ?? "Your Strategy Is Set"
+  const subheadline = summary
+    ? cleanSubheadline(summary.presentation.subheadline)
+    : "Meridian is ready to manage your portfolio based on this strategy."
+
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060606]"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-[#060606]"
       style={exiting ? { animation: "fadeOut 300ms ease-in forwards" } : { animation: "fadeIn 600ms ease-out" }}
     >
       {/* Background glow */}
@@ -96,69 +96,115 @@ export function StrategyActivatedOverlay({ onComplete }: { onComplete: () => voi
       {/* Starfield */}
       <Starfield stars={STARS} />
 
-      {/* Compass icon */}
-      <div
-        className="relative z-10"
-        style={{ animation: "fadeSlideUp 600ms ease-out 200ms both" }}
-      >
+      <div className="relative z-10 flex flex-col items-center px-6 py-12">
+        {/* Compass icon */}
         <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: "radial-gradient(circle, rgba(212,175,55,0.10) 0%, transparent 70%)",
-            transform: "scale(1.5)",
-          }}
-        />
-        <svg width="100" height="100" viewBox="0 0 120 120" fill="none" className="relative">
-          <circle cx="60" cy="60" r="57" stroke="#d4af37" strokeWidth="0.6" opacity="0.25" />
-          <circle cx="60" cy="60" r="47" stroke="#d4af37" strokeWidth="0.8" opacity="0.4" />
-          <circle
-            cx="60"
-            cy="60"
-            r="25"
-            stroke="#d4af37"
-            strokeWidth="1.3"
-            fill="rgba(212,175,55,0.05)"
-            opacity="0.7"
+          className="relative"
+          style={{ animation: "fadeSlideUp 600ms ease-out 200ms both" }}
+        >
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: "radial-gradient(circle, rgba(212,175,55,0.10) 0%, transparent 70%)",
+              transform: "scale(1.5)",
+            }}
           />
-          <circle cx="60" cy="60" r="14" stroke="#d4af37" strokeWidth="0.9" fill="none" opacity="0.55" />
-          <line x1="50" y1="70" x2="70" y2="50" stroke="#d4af37" strokeWidth="1.1" opacity="0.6" />
-          <circle cx="60" cy="60" r="1.5" fill="#d4af37" opacity="0.45" />
-        </svg>
+          <svg width="80" height="80" viewBox="0 0 120 120" fill="none" className="relative">
+            <circle cx="60" cy="60" r="57" stroke="#d4af37" strokeWidth="0.6" opacity="0.25" />
+            <circle cx="60" cy="60" r="47" stroke="#d4af37" strokeWidth="0.8" opacity="0.4" />
+            <circle cx="60" cy="60" r="25" stroke="#d4af37" strokeWidth="1.3" fill="rgba(212,175,55,0.05)" opacity="0.7" />
+            <circle cx="60" cy="60" r="14" stroke="#d4af37" strokeWidth="0.9" fill="none" opacity="0.55" />
+            <line x1="50" y1="70" x2="70" y2="50" stroke="#d4af37" strokeWidth="1.1" opacity="0.6" />
+            <circle cx="60" cy="60" r="1.5" fill="#d4af37" opacity="0.45" />
+          </svg>
+        </div>
+
+        {/* STRATEGY ACTIVATED label */}
+        <p
+          className="mt-6 font-mono text-[11px] uppercase tracking-[0.25em] text-[#d4af37]/70"
+          style={{ animation: "fadeSlideUp 600ms ease-out 400ms both" }}
+        >
+          Strategy Activated
+        </p>
+
+        {/* Headline */}
+        <h1
+          className="mt-4 max-w-[520px] text-center font-serif text-3xl leading-tight text-[#f8efdc] sm:text-[38px]"
+          style={{ fontStyle: "italic", animation: "fadeSlideUp 600ms ease-out 600ms both" }}
+        >
+          {headline}
+        </h1>
+
+        {/* Subheadline */}
+        <p
+          className="mt-3 max-w-[400px] text-center text-[15px] leading-relaxed text-[#d9d1c3]/50"
+          style={{ animation: "fadeSlideUp 600ms ease-out 700ms both" }}
+        >
+          {subheadline}
+        </p>
+
+        {/* 4-tile strategy card */}
+        {summary && (
+          <div
+            className="mt-8 w-full max-w-[520px]"
+            style={{ animation: "fadeSlideUp 600ms ease-out 800ms both" }}
+          >
+            <section className="overflow-hidden rounded-2xl border border-[#d4af37]/20 bg-[#0f0d0a] shadow-[0_30px_80px_rgba(0,0,0,0.4)]">
+              {/* Card header */}
+              <div className="flex items-center justify-between border-b border-[#d4af37]/10 px-6 py-3.5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#d4af37]/60">
+                  {summary.presentation.panelTitle}
+                </p>
+              </div>
+
+              {/* 2x2 tile grid */}
+              <div className="grid grid-cols-2">
+                {summary.presentation.tiles.map((tile, index) => (
+                  <div
+                    key={tile.id}
+                    className={[
+                      "px-5 py-5",
+                      index % 2 === 1 ? "border-l border-[#d4af37]/10" : "",
+                      index >= 2 ? "border-t border-[#d4af37]/10" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#d4af37]/50">
+                      {tile.label}
+                    </p>
+                    <p className="mt-2.5 text-[15px] leading-snug text-[#f8efdc]/90">
+                      {tile.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footnote strip */}
+              {summary.presentation.footnote && (
+                <div className="border-t border-[#d4af37]/10 px-6 py-3">
+                  <p className="flex items-center gap-2 text-[12px] italic text-[#d9d1c3]/35">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                      <path d="M9.5 1L4 9h4l-1.5 6L13 7H9l.5-6Z" fill="#d4af37" opacity="0.45" />
+                    </svg>
+                    {summary.presentation.footnote}
+                  </p>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* Activate CTA */}
+        <button
+          autoFocus
+          onClick={handleComplete}
+          className="mt-10 cursor-pointer rounded-2xl bg-[#d4af37] px-12 py-4 text-[17px] font-semibold text-[#1a1507] shadow-[0_8px_30px_rgba(212,175,55,0.25)] transition-all hover:bg-[#e0bf4a] hover:shadow-[0_8px_40px_rgba(212,175,55,0.35)] active:scale-[0.99]"
+          style={{ animation: "fadeSlideUp 600ms ease-out 1000ms both" }}
+        >
+          Activate Atlas &rarr;
+        </button>
       </div>
-
-      {/* STRATEGY ACTIVATED label */}
-      <p
-        className="relative z-10 mt-7 font-mono text-[11px] uppercase tracking-[0.25em] text-[#d4af37]/70"
-        style={{ animation: "fadeSlideUp 600ms ease-out 400ms both" }}
-      >
-        Strategy Activated
-      </p>
-
-      {/* Headline from strategy summary */}
-      <h1
-        className="relative z-10 mt-4 max-w-[520px] text-center font-serif text-4xl leading-tight text-[#f8efdc] sm:text-[42px]"
-        style={{ fontStyle: "italic", animation: "fadeSlideUp 600ms ease-out 600ms both" }}
-      >
-        {headline ?? "Your Strategy Is Set"}
-      </h1>
-
-      {/* Subheadline */}
-      <p
-        className="relative z-10 mt-3.5 max-w-[400px] text-center text-[15px] leading-relaxed text-[#d9d1c3]/50"
-        style={{ animation: "fadeSlideUp 600ms ease-out 700ms both" }}
-      >
-        {subheadline ?? "Meridian is ready to manage your portfolio based on this strategy."}
-      </p>
-
-      {/* Continue CTA */}
-      <button
-        autoFocus
-        onClick={handleComplete}
-        className="relative z-10 mt-11 cursor-pointer rounded-2xl bg-[#d4af37] px-12 py-4 text-[17px] font-semibold text-[#1a1507] shadow-[0_8px_30px_rgba(212,175,55,0.25)] transition-all hover:bg-[#e0bf4a] hover:shadow-[0_8px_40px_rgba(212,175,55,0.35)] active:scale-[0.99]"
-        style={{ animation: "fadeSlideUp 600ms ease-out 900ms both" }}
-      >
-        Continue to Atlas →
-      </button>
     </div>
   )
 }

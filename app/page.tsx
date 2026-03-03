@@ -14,32 +14,29 @@ import { StrategyActivatedOverlay } from "@/components/atlas/strategy-activated-
 import { useOnboarding } from "@/components/atlas/use-onboarding"
 import type { AtlasView } from "@/components/atlas/view-types"
 
-const ONBOARDING_LOCKED_VIEWS: AtlasView[] = ["strategy", "portfolio", "activity", "accounts"]
-
-const AUTO_TRIGGER_MESSAGE =
-  "I just opened Atlas for the first time. Help me define my investment strategy."
-
 export default function Home() {
   const [activeView, setActiveView] = useState<AtlasView>("chat")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [onboardingAutoTriggerConsumed, setOnboardingAutoTriggerConsumed] = useState(false)
+  const [justActivated, setJustActivated] = useState(false)
   const { phase, loading, dismissSplash, completeActivation } = useOnboarding()
 
-  // TODO: Re-enable sidebar locks once onboarding flow is finalized
-  // const isOnboarding = phase === "chat_onboarding" || phase === "splash"
-  // const lockedViews = isOnboarding ? ONBOARDING_LOCKED_VIEWS : undefined
-  const lockedViews = undefined
+  const isOnboarding = phase !== "done"
 
-  const effectiveView = activeView
+  const handleActivate = () => {
+    setJustActivated(true)
+    completeActivation()
+  }
+
+  // Clear justActivated after animation completes
+  useEffect(() => {
+    if (!justActivated) return
+    const timer = setTimeout(() => setJustActivated(false), 500)
+    return () => clearTimeout(timer)
+  }, [justActivated])
+
   const handleNavigate = (view: AtlasView) => {
     setActiveView(view)
   }
-
-  useEffect(() => {
-    if (phase !== "chat_onboarding") {
-      setOnboardingAutoTriggerConsumed(false)
-    }
-  }, [phase])
 
   if (loading) {
     return <div className="min-h-screen bg-[#060606]" />
@@ -49,43 +46,41 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {phase === "splash" && <SplashOverlay onDismiss={dismissSplash} />}
       {phase === "strategy_activated" && (
-        <StrategyActivatedOverlay onComplete={completeActivation} />
+        <StrategyActivatedOverlay onComplete={handleActivate} />
       )}
 
-      <Sidebar
-        activeView={effectiveView}
-        onNavigate={handleNavigate}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        lockedViews={lockedViews}
-      />
-      <MobileNav
-        activeView={effectiveView}
-        onNavigate={handleNavigate}
-        lockedViews={lockedViews}
-      />
+      {!isOnboarding && (
+        <>
+          <Sidebar
+            activeView={activeView}
+            onNavigate={handleNavigate}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            animate={justActivated}
+          />
+          <MobileNav
+            activeView={activeView}
+            onNavigate={handleNavigate}
+          />
+        </>
+      )}
 
       <main
-        className={`h-screen pb-16 lg:pb-0 transition-[margin] duration-300 ease-in-out ${
-          sidebarCollapsed ? "lg:ml-[68px]" : "lg:ml-[280px]"
+        className={`h-screen transition-[margin] duration-300 ease-in-out ${
+          isOnboarding
+            ? ""
+            : `pb-16 lg:pb-0 ${sidebarCollapsed ? "lg:ml-[68px]" : "lg:ml-[280px]"}`
         }`}
       >
         <div className="h-full transition-opacity duration-200">
-          {effectiveView === "chat" && (
-            <ChatScreen
-              autoTriggerMessage={
-                phase === "chat_onboarding" && !onboardingAutoTriggerConsumed
-                  ? AUTO_TRIGGER_MESSAGE
-                  : undefined
-              }
-              onAutoTriggerFired={() => setOnboardingAutoTriggerConsumed(true)}
-            />
+          {activeView === "chat" && (
+            <ChatScreen isOnboarding={isOnboarding} />
           )}
-          {effectiveView === "strategy" && <StrategyScreen />}
-          {effectiveView === "portfolio" && <PortfolioScreen />}
-          {effectiveView === "activity" && <ActivityScreen />}
-          {effectiveView === "accounts" && <AccountsScreen />}
-          {effectiveView === "user" && <UserScreen />}
+          {activeView === "strategy" && <StrategyScreen />}
+          {activeView === "portfolio" && <PortfolioScreen />}
+          {activeView === "activity" && <ActivityScreen />}
+          {activeView === "accounts" && <AccountsScreen />}
+          {activeView === "user" && <UserScreen />}
         </div>
       </main>
     </div>

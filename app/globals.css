@@ -107,6 +107,11 @@
   to { opacity: 0; }
 }
 
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

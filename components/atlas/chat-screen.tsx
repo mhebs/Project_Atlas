@@ -546,11 +546,10 @@ function CompletedAnswerCard({ answers }: { answers: Record<string, string> }) {
 }
 
 interface ChatScreenProps {
-  autoTriggerMessage?: string
-  onAutoTriggerFired?: () => void
+  isOnboarding?: boolean
 }
 
-export function ChatScreen({ autoTriggerMessage, onAutoTriggerFired }: ChatScreenProps = {}) {
+export function ChatScreen({ isOnboarding }: ChatScreenProps = {}) {
   const [snapshot, setSnapshot] = useState<LatestSessionResponse | null>(null)
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [input, setInput] = useState("")
@@ -567,7 +566,6 @@ export function ChatScreen({ autoTriggerMessage, onAutoTriggerFired }: ChatScree
   const scrollRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
   const previousStreamingAssistantIndexRef = useRef<number | null>(null)
-  const autoTriggerFiredRef = useRef(false)
 
   const activeStreamingAssistantIndex = useMemo(() => {
     if (!snapshot || snapshot.status !== "running") return null
@@ -754,32 +752,6 @@ export function ChatScreen({ autoTriggerMessage, onAutoTriggerFired }: ChatScree
     }
   }, [])
 
-  // Auto-trigger onboarding message when SSE connects and no messages exist
-  useEffect(() => {
-    if (
-      !autoTriggerMessage ||
-      autoTriggerFiredRef.current ||
-      !latestLoaded ||
-      connectionState !== "live" ||
-      messages.length > 0
-    ) {
-      return
-    }
-    autoTriggerFiredRef.current = true
-    onAutoTriggerFired?.()
-    void (async () => {
-      try {
-        await fetch("/api/agent/trigger", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: autoTriggerMessage }),
-        })
-      } catch {
-        // Silently fail — user can still type manually
-      }
-    })()
-  }, [autoTriggerMessage, connectionState, latestLoaded, messages.length, onAutoTriggerFired])
-
   useEffect(() => {
     const scroller = scrollRef.current
     if (!scroller || !shouldAutoScrollRef.current) return
@@ -814,16 +786,73 @@ export function ChatScreen({ autoTriggerMessage, onAutoTriggerFired }: ChatScree
       >
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <div className="mx-auto mb-4">
-                <CompassAvatar />
+            <div className="flex flex-col items-center text-center">
+              {/* Large compass icon */}
+              <div className="relative mb-6">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: "radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)",
+                    transform: "scale(1.8)",
+                  }}
+                />
+                <svg width="80" height="80" viewBox="0 0 120 120" fill="none" className="relative">
+                  <circle cx="60" cy="60" r="57" stroke="#d4af37" strokeWidth="0.6" opacity="0.25" />
+                  <circle cx="60" cy="60" r="47" stroke="#d4af37" strokeWidth="0.8" opacity="0.4" />
+                  <circle cx="60" cy="60" r="25" stroke="#d4af37" strokeWidth="1.3" fill="rgba(212,175,55,0.05)" opacity="0.7" />
+                  <circle cx="60" cy="60" r="14" stroke="#d4af37" strokeWidth="0.9" fill="none" opacity="0.55" />
+                  <line x1="50" y1="70" x2="70" y2="50" stroke="#d4af37" strokeWidth="1.1" opacity="0.6" />
+                  <circle cx="60" cy="60" r="1.5" fill="#d4af37" opacity="0.45" />
+                </svg>
               </div>
+
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9A7B2A]">
                 Meridian
               </p>
-              <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#8C8375]">
-                No conversation yet. Send a message to start a session.
-              </p>
+
+              {isOnboarding ? (
+                <>
+                  <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-[#8C8375]">
+                    Your portfolio, guided by conviction
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInput("Help me define my strategy")
+                      // Use a microtask to ensure state is set before sending
+                      setTimeout(() => {
+                        const syntheticSend = async () => {
+                          setSending(true)
+                          try {
+                            await fetch("/api/agent/trigger", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ message: "Help me define my strategy" }),
+                            })
+                          } catch {
+                            setError("Failed to send message")
+                          } finally {
+                            setSending(false)
+                            setInput("")
+                          }
+                        }
+                        void syntheticSend()
+                      }, 0)
+                    }}
+                    disabled={sending}
+                    className="mt-6 cursor-pointer rounded-2xl bg-[#d4af37]/80 px-8 py-3.5 text-[15px] font-semibold text-[#1a1507] shadow-[0_4px_20px_rgba(212,175,55,0.2)] transition-all hover:bg-[#d4af37] hover:shadow-[0_4px_28px_rgba(212,175,55,0.3)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Help me define my strategy
+                  </button>
+                  <p className="mt-4 text-[13px] text-[#8C8375]/70">
+                    or type your own below
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#8C8375]">
+                  No conversation yet. Send a message to start a session.
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -882,7 +911,7 @@ export function ChatScreen({ autoTriggerMessage, onAutoTriggerFired }: ChatScree
                   void handleSend()
                 }
               }}
-              placeholder={isAwaitingInput ? "Answer the question above first..." : "Type your message..."}
+              placeholder={isAwaitingInput ? "Answer the question above first..." : isOnboarding ? "Describe your investment strategy..." : "Type your message..."}
               rows={1}
               disabled={isAwaitingInput}
               className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[#2C2617] placeholder:text-[#8C8375] focus:outline-none disabled:cursor-not-allowed"

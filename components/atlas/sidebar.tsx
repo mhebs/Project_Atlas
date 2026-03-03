@@ -30,18 +30,21 @@ export function Sidebar({
   collapsed,
   onToggle,
   lockedViews,
+  animate,
 }: {
   activeView: AtlasView
   onNavigate: (view: AtlasView) => void
   collapsed: boolean
   onToggle: () => void
   lockedViews?: AtlasView[]
+  animate?: boolean
 }) {
   return (
     <aside
       className={`hidden lg:flex flex-col bg-sidebar h-screen fixed left-0 top-0 z-40 transition-all duration-300 ease-in-out ${
         collapsed ? "w-[68px]" : "w-[280px]"
       }`}
+      style={animate ? { animation: "slideInFromLeft 400ms ease-out" } : undefined}
     >
       {collapsed ? (
         <CollapsedContent
