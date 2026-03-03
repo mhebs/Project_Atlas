@@ -98,6 +98,14 @@ export function AccountsScreen() {
       }
 
       setResetResult(normalized)
+
+      // Clear onboarding flags so full re-onboarding can be experienced
+      if (normalized.ok) {
+        localStorage.removeItem("atlas:onboarded")
+        localStorage.removeItem("atlas:splash_dismissed")
+        // Reload after a short delay so the success banner is visible
+        setTimeout(() => window.location.reload(), 1500)
+      }
     } catch (error) {
       setResetResult({
         ok: false,

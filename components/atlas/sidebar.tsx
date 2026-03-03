@@ -29,11 +29,13 @@ export function Sidebar({
   onNavigate,
   collapsed,
   onToggle,
+  lockedViews,
 }: {
   activeView: AtlasView
   onNavigate: (view: AtlasView) => void
   collapsed: boolean
   onToggle: () => void
+  lockedViews?: AtlasView[]
 }) {
   return (
     <aside
@@ -46,12 +48,14 @@ export function Sidebar({
           activeView={activeView}
           onNavigate={onNavigate}
           onToggle={onToggle}
+          lockedViews={lockedViews}
         />
       ) : (
         <ExpandedContent
           activeView={activeView}
           onNavigate={onNavigate}
           onToggle={onToggle}
+          lockedViews={lockedViews}
         />
       )}
     </aside>
@@ -62,10 +66,12 @@ function ExpandedContent({
   activeView,
   onNavigate,
   onToggle,
+  lockedViews,
 }: {
   activeView: AtlasView
   onNavigate: (view: AtlasView) => void
   onToggle: () => void
+  lockedViews?: AtlasView[]
 }) {
   return (
     <>
@@ -117,12 +123,15 @@ function ExpandedContent({
         <div className="space-y-4">
           {navItems.map((item) => {
             const isActive = activeView === item.id
+            const isLocked = lockedViews?.includes(item.id) ?? false
 
             return (
               <button
                 key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className="flex items-center gap-4 w-full cursor-pointer py-1"
+                onClick={() => !isLocked && onNavigate(item.id)}
+                className={`flex items-center gap-4 w-full py-1 ${
+                  isLocked ? "cursor-not-allowed opacity-40" : "cursor-pointer"
+                }`}
               >
                 <div
                   className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
@@ -169,10 +178,12 @@ function CollapsedContent({
   activeView,
   onNavigate,
   onToggle,
+  lockedViews,
 }: {
   activeView: AtlasView
   onNavigate: (view: AtlasView) => void
   onToggle: () => void
+  lockedViews?: AtlasView[]
 }) {
   return (
     <>
@@ -196,12 +207,13 @@ function CollapsedContent({
       <div className="flex flex-col items-center gap-4 pb-6">
         {navItems.map((item) => {
           const isActive = activeView === item.id
+          const isLocked = lockedViews?.includes(item.id) ?? false
 
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className="cursor-pointer"
+              onClick={() => !isLocked && onNavigate(item.id)}
+              className={isLocked ? "cursor-not-allowed opacity-40" : "cursor-pointer"}
             >
               {isActive ? (
                 <div className="relative">

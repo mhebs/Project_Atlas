@@ -20,11 +20,11 @@ interface TranslationResult {
 }
 
 interface TranslationCacheEntry {
-  expiresAt: number
+  contentHash: string
   result: TranslationResult | null
 }
 
-const translationCache = new Map<string, TranslationCacheEntry>()
+let translationCacheEntry: TranslationCacheEntry | null = null
 
 function compactWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim()
@@ -567,18 +567,16 @@ async function translateMarkdownToPresentation(markdown: string, fallbackCards: 
   if (!markdown.trim()) return null
 
   const provider = (process.env.LLM_PROVIDER ?? "claude-cli").trim().toLowerCase()
-  const cacheKey = hashKeyForTranslation(markdown)
-  const cached = translationCache.get(cacheKey)
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.result
+  const contentHash = hashKeyForTranslation(markdown)
+  if (translationCacheEntry && translationCacheEntry.contentHash === contentHash) {
+    return translationCacheEntry.result
   }
 
   if (isClaudeCliProvider()) {
     const translated = await translateWithClaudeCli(markdown, fallbackCards)
-    translationCache.set(cacheKey, {
-      result: translated,
-      expiresAt: Date.now() + (translated ? 10 * 60_000 : 30_000),
-    })
+    if (translated) {
+      translationCacheEntry = { contentHash, result: translated }
+    }
     return translated
   }
 
@@ -633,32 +631,27 @@ async function translateMarkdownToPresentation(markdown: string, fallbackCards: 
     })
 
     if (!response.ok) {
-      translationCache.set(cacheKey, { result: null, expiresAt: Date.now() + 30_000 })
       return null
     }
 
     const payload = (await response.json()) as unknown
     const content = parseOpenAIContent(payload)
     if (!content) {
-      translationCache.set(cacheKey, { result: null, expiresAt: Date.now() + 30_000 })
       return null
     }
 
     const jsonString = extractJsonString(content)
     if (!jsonString) {
-      translationCache.set(cacheKey, { result: null, expiresAt: Date.now() + 30_000 })
       return null
     }
 
     const parsed = JSON.parse(jsonString) as unknown
     const translation = coerceLLMResponseToTranslation(parsed, markdown, fallbackCards)
-    translationCache.set(cacheKey, {
-      result: translation,
-      expiresAt: Date.now() + (translation ? 10 * 60_000 : 30_000),
-    })
+    if (translation) {
+      translationCacheEntry = { contentHash, result: translation }
+    }
     return translation
   } catch {
-    translationCache.set(cacheKey, { result: null, expiresAt: Date.now() + 30_000 })
     return null
   } finally {
     clearTimeout(timeout)

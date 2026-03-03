@@ -153,7 +153,7 @@ function MessageBubble({
   )
 }
 
-export function ChatScreen() {
+export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string } = {}) {
   const [snapshot, setSnapshot] = useState<LatestSessionResponse | null>(null)
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [input, setInput] = useState("")
@@ -169,6 +169,7 @@ export function ChatScreen() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
   const previousStreamingAssistantIndexRef = useRef<number | null>(null)
+  const autoTriggerFiredRef = useRef(false)
 
   const activeStreamingAssistantIndex = useMemo(() => {
     if (!snapshot || snapshot.status !== "running") return null
@@ -328,6 +329,30 @@ export function ChatScreen() {
       source?.close()
     }
   }, [])
+
+  // Auto-trigger onboarding message when SSE connects and no messages exist
+  useEffect(() => {
+    if (
+      !autoTriggerMessage ||
+      autoTriggerFiredRef.current ||
+      connectionState !== "live" ||
+      messages.length > 0
+    ) {
+      return
+    }
+    autoTriggerFiredRef.current = true
+    void (async () => {
+      try {
+        await fetch("/api/agent/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: autoTriggerMessage }),
+        })
+      } catch {
+        // Silently fail — user can still type manually
+      }
+    })()
+  }, [autoTriggerMessage, connectionState, messages.length])
 
   useEffect(() => {
     const scroller = scrollRef.current

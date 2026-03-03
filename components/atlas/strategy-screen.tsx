@@ -2,14 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { StrategySummaryResponse } from "@/lib/atlas-types"
+import { Starfield, type Star } from "./starfield"
 
-const STARS: Array<{
-  top: string
-  left: string
-  size: number
-  opacity: number
-  type: "dot" | "diamond"
-}> = [
+const STARS: Star[] = [
   { top: "6%", left: "10%", size: 2, opacity: 0.35, type: "dot" },
   { top: "11%", left: "30%", size: 3, opacity: 0.55, type: "dot" },
   { top: "8%", left: "54%", size: 2, opacity: 0.4, type: "dot" },
@@ -89,41 +84,7 @@ export function StrategyScreen() {
       </div>
 
       {/* Starfield */}
-      <div className="pointer-events-none absolute inset-0 opacity-80">
-        {STARS.map((star, index) =>
-          star.type === "diamond" ? (
-            <span
-              key={index}
-              className="absolute bg-[#e8c862]"
-              style={{
-                top: star.top,
-                left: star.left,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-                opacity: star.opacity,
-                transform: "rotate(45deg)",
-                boxShadow: "0 0 10px rgba(212,175,55,0.4)",
-              }}
-            />
-          ) : (
-            <span
-              key={index}
-              className="absolute rounded-full bg-[#e8c862]"
-              style={{
-                top: star.top,
-                left: star.left,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-                opacity: star.opacity,
-                boxShadow:
-                  star.size > 2
-                    ? "0 0 12px rgba(212,175,55,0.35)"
-                    : "0 0 6px rgba(212,175,55,0.18)",
-              }}
-            />
-          ),
-        )}
-      </div>
+      <Starfield stars={STARS} />
 
       {/* Main content */}
       <div className="relative z-10 flex-1 overflow-y-auto">

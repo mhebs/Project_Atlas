@@ -15,26 +15,31 @@ const navItems: { id: AtlasView; label: string; icon: React.ElementType }[] = [
 export function MobileNav({
   activeView,
   onNavigate,
+  lockedViews,
 }: {
   activeView: AtlasView
   onNavigate: (view: AtlasView) => void
+  lockedViews?: AtlasView[]
 }) {
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40">
       <ul className="flex items-center justify-around py-2">
         {navItems.map((item) => {
           const isActive = activeView === item.id
+          const isLocked = lockedViews?.includes(item.id) ?? false
           return (
             <li key={item.id}>
               <button
-                onClick={() => onNavigate(item.id)}
-                className={`flex flex-col items-center gap-1 px-4 py-1.5 transition-colors cursor-pointer ${
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground"
+                onClick={() => !isLocked && onNavigate(item.id)}
+                className={`flex flex-col items-center gap-1 px-4 py-1.5 transition-colors ${
+                  isLocked
+                    ? "cursor-not-allowed opacity-40 text-muted-foreground"
+                    : isActive
+                      ? "cursor-pointer text-primary"
+                      : "cursor-pointer text-muted-foreground"
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? "text-secondary" : ""}`} />
+                <item.icon className={`w-5 h-5 ${isActive && !isLocked ? "text-secondary" : ""}`} />
                 <span className="text-[10px] font-medium">{item.label}</span>
               </button>
             </li>
