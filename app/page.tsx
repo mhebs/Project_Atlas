@@ -24,13 +24,13 @@ export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const { phase, loading, dismissSplash, completeActivation } = useOnboarding()
 
-  const isOnboarding = phase === "chat_onboarding" || phase === "splash"
-  const lockedViews = isOnboarding ? ONBOARDING_LOCKED_VIEWS : undefined
+  // TODO: Re-enable sidebar locks once onboarding flow is finalized
+  // const isOnboarding = phase === "chat_onboarding" || phase === "splash"
+  // const lockedViews = isOnboarding ? ONBOARDING_LOCKED_VIEWS : undefined
+  const lockedViews = undefined
 
-  // Force chat view during onboarding
-  const effectiveView = isOnboarding ? "chat" : activeView
+  const effectiveView = activeView
   const handleNavigate = (view: AtlasView) => {
-    if (lockedViews?.includes(view)) return
     setActiveView(view)
   }
 
