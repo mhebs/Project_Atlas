@@ -64,15 +64,34 @@ export interface TranscriptMessage {
   name: string | null
 }
 
+export interface PendingQuestionOption {
+  label: string
+  description: string
+}
+
+export interface PendingQuestionItem {
+  question: string
+  header?: string
+  options: PendingQuestionOption[]
+  multiSelect: boolean
+}
+
+export interface PendingQuestion {
+  id: string
+  questions: PendingQuestionItem[]
+  askedAt: string
+}
+
 export interface SessionTranscript {
   sessionId: string
-  status: "running" | "completed" | "error"
+  status: "running" | "completed" | "error" | "awaiting_input"
   startedAt: string
   endedAt: string | null
   error: string | null
   mtimeMs: number
   messageCount: number
   messages: TranscriptMessage[]
+  pendingQuestion?: PendingQuestion | null
 }
 
 export interface EmptySessionTranscript {
@@ -84,6 +103,7 @@ export interface EmptySessionTranscript {
   mtimeMs: null
   messageCount: 0
   messages: TranscriptMessage[]
+  pendingQuestion: null
 }
 
 export type LatestSessionResponse = SessionTranscript | EmptySessionTranscript

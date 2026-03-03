@@ -166,21 +166,21 @@ function headingClass(level: number) {
 function themeClasses(variant: MarkdownLiteVariant) {
   if (variant === "atlas-gold") {
     return {
-      panel: "rounded-2xl border border-[#c8a43a]/20 bg-[#11100d]/90 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)]",
-      empty: "text-sm text-[#d9d1c3]/60",
-      paragraph: "text-sm leading-relaxed text-[#f3ead8]",
-      listItem: "flex items-start gap-2 text-sm text-[#f3ead8]",
+      panel: "rounded-2xl border border-[#c8a43a]/25 bg-[#FFFFFF] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.06)]",
+      empty: "text-sm text-[#8C8375]",
+      paragraph: "text-sm leading-relaxed text-[#2C2617]",
+      listItem: "flex items-start gap-2 text-sm text-[#2C2617]",
       listDot: "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d4af37]",
-      tableWrap: "overflow-x-auto rounded-xl border border-[#c8a43a]/20 bg-black/20",
+      tableWrap: "overflow-x-auto rounded-xl border border-[#c8a43a]/20 bg-[#F5F0E8]/50",
       thead: "bg-[#d4af37]/8",
-      th: "px-3 py-2 text-left font-mono text-xs uppercase tracking-wide text-[#d9b248]",
+      th: "px-3 py-2 text-left font-mono text-xs uppercase tracking-wide text-[#9A7B2A]",
       tr: "border-t border-[#c8a43a]/15",
-      td: "px-3 py-2 text-[#f3ead8]",
+      td: "px-3 py-2 text-[#2C2617]",
       hr: "border-t border-[#c8a43a]/20",
-      blockquote: "border-l-2 border-[#d4af37]/40 pl-4 text-sm leading-relaxed text-[#d9d1c3]/80 italic",
-      rawPanel: "rounded-2xl border border-[#c8a43a]/20 bg-[#11100d]/90 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]",
-      rawTitle: "text-xs font-mono uppercase tracking-wider text-[#d9b248]/80",
-      rawPre: "max-h-[28rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-[#efe6d6]",
+      blockquote: "border-l-2 border-[#d4af37]/40 pl-4 text-sm leading-relaxed text-[#6B6259] italic",
+      rawPanel: "rounded-2xl border border-[#c8a43a]/25 bg-[#FFFFFF] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.06)]",
+      rawTitle: "text-xs font-mono uppercase tracking-wider text-[#9A7B2A]",
+      rawPre: "max-h-[28rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-[#2C2617]",
     } as const
   }
 
@@ -235,7 +235,7 @@ export function MarkdownLite({
             const themedHeading =
               variant === "atlas-gold"
                 ? headingClass(block.level)
-                    .replace("text-foreground", "text-[#f8eed9]")
+                    .replace("text-foreground", "text-[#1A1507]")
                     .replace("tracking-wide", "tracking-[0.14em]")
                 : headingClass(block.level)
             return (

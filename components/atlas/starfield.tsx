@@ -8,12 +8,12 @@ export type Star = {
 
 export function Starfield({ stars }: { stars: Star[] }) {
   return (
-    <div className="pointer-events-none absolute inset-0 opacity-80">
+    <div className="pointer-events-none absolute inset-0 opacity-40">
       {stars.map((star, i) =>
         star.type === "diamond" ? (
           <span
             key={i}
-            className="absolute bg-[#e8c862]"
+            className="absolute bg-[#C8A43A]"
             style={{
               top: star.top,
               left: star.left,
@@ -21,7 +21,7 @@ export function Starfield({ stars }: { stars: Star[] }) {
               height: `${star.size}px`,
               opacity: star.opacity,
               transform: "rotate(45deg)",
-              boxShadow: "0 0 10px rgba(212,175,55,0.4)",
+              boxShadow: "0 0 10px rgba(200,164,58,0.15)",
               animation: `starDrift 25s ease-in-out infinite`,
               animationDelay: `${i * 1.7}s`,
             }}
@@ -29,7 +29,7 @@ export function Starfield({ stars }: { stars: Star[] }) {
         ) : (
           <span
             key={i}
-            className="absolute rounded-full bg-[#e8c862]"
+            className="absolute rounded-full bg-[#C8A43A]"
             style={{
               top: star.top,
               left: star.left,
@@ -38,8 +38,8 @@ export function Starfield({ stars }: { stars: Star[] }) {
               opacity: star.opacity,
               boxShadow:
                 star.size > 2
-                  ? "0 0 12px rgba(212,175,55,0.35)"
-                  : "0 0 6px rgba(212,175,55,0.18)",
+                  ? "0 0 12px rgba(200,164,58,0.12)"
+                  : "0 0 6px rgba(200,164,58,0.08)",
               animation: `starDrift 25s ease-in-out infinite`,
               animationDelay: `${i * 1.7}s`,
             }}

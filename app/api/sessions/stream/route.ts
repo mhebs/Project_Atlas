@@ -9,6 +9,7 @@ type PollState = {
   messageCount: number
   status: string | null
   endedAt: string | null
+  pendingQuestionId: string | null
   messageSignatures: string[]
 }
 
@@ -38,6 +39,7 @@ export async function GET() {
     messageCount: 0,
     status: null,
     endedAt: null,
+    pendingQuestionId: null,
     messageSignatures: [],
   }
 
@@ -61,6 +63,7 @@ export async function GET() {
               state.messageCount = 0
               state.status = null
               state.endedAt = null
+              state.pendingQuestionId = null
               state.messageSignatures = []
               emptySent = false
             }
@@ -81,6 +84,7 @@ export async function GET() {
             state.messageCount = snapshot.messageCount
             state.status = snapshot.status
             state.endedAt = snapshot.endedAt
+            state.pendingQuestionId = snapshot.pendingQuestion?.id ?? null
             state.messageSignatures = snapshot.messages.map(messageSignature)
             send("session", snapshot)
             return
@@ -115,14 +119,21 @@ export async function GET() {
           state.messageCount = snapshot.messageCount
           state.messageSignatures = nextSignatures.slice(0, snapshot.messageCount)
 
-          if (snapshot.status !== state.status || snapshot.endedAt !== state.endedAt) {
+          const currentPendingId = snapshot.pendingQuestion?.id ?? null
+          if (
+            snapshot.status !== state.status ||
+            snapshot.endedAt !== state.endedAt ||
+            currentPendingId !== state.pendingQuestionId
+          ) {
             state.status = snapshot.status
             state.endedAt = snapshot.endedAt
+            state.pendingQuestionId = currentPendingId
             send("status", {
               sessionId: snapshot.sessionId,
               status: snapshot.status,
               endedAt: snapshot.endedAt,
               error: snapshot.error,
+              pendingQuestion: snapshot.pendingQuestion ?? null,
             })
           }
         } catch {

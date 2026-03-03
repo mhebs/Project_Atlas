@@ -77,10 +77,10 @@ export function StrategyScreen() {
   }, [load])
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-[#060606] text-[#f7eedb]">
+    <div className="relative flex h-full flex-col overflow-hidden bg-[#F5F0E8] text-[#1A1507]">
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_20%,rgba(212,175,55,0.08),transparent_60%)]" />
+        <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(ellipse 60% 50% at 50% 20%, rgba(200, 164, 58, 0.06), transparent 60%)" }} />
       </div>
 
       {/* Starfield */}
@@ -168,7 +168,7 @@ export function StrategyScreen() {
 
           {/* Loading state */}
           {loading && !summary && (
-            <p className="mb-8 text-sm text-[#d9d1c3]/50">Loading strategy…</p>
+            <p className="mb-8 text-sm text-[#8C8375]">Loading strategy…</p>
           )}
           {error && !summary && (
             <p className="mb-8 text-sm text-[#f2a6a6]">{error}</p>
@@ -177,23 +177,23 @@ export function StrategyScreen() {
           {summary && (
             <>
               {/* Headline */}
-              <h1 className="mb-5 text-center font-serif text-4xl leading-tight text-[#f8efdc] sm:text-5xl" style={{ fontStyle: "italic" }}>
+              <h1 className="mb-5 text-center font-serif text-4xl leading-tight text-[#1A1507] sm:text-5xl" style={{ fontStyle: "italic" }}>
                 {summary.presentation.headline}
               </h1>
 
               {/* Subheadline */}
-              <p className="mb-12 max-w-md text-center text-[15px] leading-relaxed text-[#d9d1c3]/65">
+              <p className="mb-12 max-w-md text-center text-[15px] leading-relaxed text-[#6B6259]">
                 {summary.presentation.subheadline}
               </p>
 
               {/* Strategy card */}
-              <section className="w-full overflow-hidden rounded-2xl border border-[#c8a43a]/20 bg-[#13110e]/92 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">
+              <section className="w-full overflow-hidden rounded-2xl border border-[#c8a43a]/25 bg-[#FFFFFF] shadow-[0_30px_80px_rgba(0,0,0,0.08)]">
                 {/* Card header */}
                 <div className="flex items-center justify-between border-b border-[#c8a43a]/12 px-6 py-4">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#e0b949]">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9A7B2A]">
                     {summary.presentation.panelTitle}
                   </p>
-                  <p className="font-mono text-[11px] text-[#d9d1c3]/50">
+                  <p className="font-mono text-[11px] text-[#8C8375]">
                     {formatShortDate(summary.mtimeMs)}
                   </p>
                 </div>
@@ -211,10 +211,10 @@ export function StrategyScreen() {
                         .filter(Boolean)
                         .join(" ")}
                     >
-                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#d9b248]/75">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#9A7B2A]">
                         {tile.label}
                       </p>
-                      <p className="mt-3 text-[17px] leading-snug text-[#f7eedb]">
+                      <p className="mt-3 text-[17px] leading-snug text-[#1A1507]">
                         {tile.value}
                       </p>
                     </div>
@@ -222,8 +222,8 @@ export function StrategyScreen() {
                 </div>
 
                 {/* Footnote strip */}
-                <div className="border-t border-[#c8a43a]/12 bg-[#1a1711]/60 px-6 py-3.5">
-                  <p className="flex items-center gap-2.5 text-[13px] italic text-[#d8cdb8]/55">
+                <div className="border-t border-[#c8a43a]/12 bg-[#F5F0E8]/60 px-6 py-3.5">
+                  <p className="flex items-center gap-2.5 text-[13px] italic text-[#8C8375]">
                     <svg
                       width="14"
                       height="14"
@@ -248,10 +248,10 @@ export function StrategyScreen() {
               </button>
 
               {/* Footer */}
-              <p className="mt-6 text-center text-[13px] text-[#d9d1c3]/45">
+              <p className="mt-6 text-center text-[13px] text-[#8C8375]">
                 You can adjust this strategy anytime by chatting with Atlas.
               </p>
-              <button className="mt-2 cursor-pointer text-[13px] text-[#d9d1c3]/45 transition-colors hover:text-[#d9d1c3]/70">
+              <button className="mt-2 cursor-pointer text-[13px] text-[#8C8375] transition-colors hover:text-[#6B6259]">
                 ← Review and adjust
               </button>
             </>

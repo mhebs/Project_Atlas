@@ -36,6 +36,23 @@ export async function POST(request: Request) {
       const latestFile = await getLatestSessionFile()
       if (latestFile) {
         const snapshot = await readSessionSnapshot(latestFile.filePath, latestFile.mtimeMs)
+
+        // Block new triggers while the agent is waiting for user input
+        if (snapshot.status === "awaiting_input") {
+          return NextResponse.json(
+            { error: "Agent is waiting for your answer. Please respond to the question first." },
+            { status: 409 },
+          )
+        }
+
+        // Prevent overlapping detached agent processes for the same workspace.
+        if (snapshot.status === "running") {
+          return NextResponse.json(
+            { error: "Agent is already running. Please wait for the current response to finish." },
+            { status: 409 },
+          )
+        }
+
         if (snapshot.sessionId && snapshot.status === "completed") {
           agentArgs.push(`--continue-session=${snapshot.sessionId}`)
         }

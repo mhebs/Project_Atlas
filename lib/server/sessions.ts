@@ -32,13 +32,25 @@ interface RawTimestampedMessage {
   message?: RawLLMMessage
 }
 
+interface RawPendingQuestion {
+  id?: string
+  questions?: Array<{
+    question?: string
+    header?: string
+    options?: Array<{ label?: string; description?: string }>
+    multiSelect?: boolean
+  }>
+  askedAt?: string
+}
+
 interface RawSessionFile {
   id?: string
-  status?: "running" | "completed" | "error"
+  status?: "running" | "completed" | "error" | "awaiting_input"
   startedAt?: string
   endedAt?: string
   error?: string
   messages?: RawTimestampedMessage[]
+  pendingQuestion?: RawPendingQuestion | null
 }
 
 function sleep(ms: number) {
@@ -70,7 +82,7 @@ export async function listSessionFiles() {
     const entries = await fs.readdir(sessionsDir)
     const files = await Promise.all(
       entries
-        .filter((name) => name.endsWith(".json"))
+        .filter((name) => name.endsWith(".json") && !name.endsWith(".answer.json"))
         .map(async (name) => {
           const filePath = path.join(sessionsDir, name)
           const stat = await fs.stat(filePath)
@@ -125,6 +137,7 @@ function emptySession(): EmptySessionTranscript {
     mtimeMs: null,
     messageCount: 0,
     messages: [],
+    pendingQuestion: null,
   }
 }
 
@@ -132,6 +145,24 @@ export async function readSessionSnapshot(filePath: string, mtimeMs?: number): P
   const raw = await readJsonWithRetries<RawSessionFile>(filePath)
   const messages = normalizeMessages(raw.messages)
   const stat = typeof mtimeMs === "number" ? null : await fs.stat(filePath)
+
+  // Normalize the pending question if present
+  let pendingQuestion: import("@/lib/atlas-types").PendingQuestion | null = null
+  if (raw.pendingQuestion && raw.pendingQuestion.id && Array.isArray(raw.pendingQuestion.questions)) {
+    pendingQuestion = {
+      id: raw.pendingQuestion.id,
+      questions: raw.pendingQuestion.questions.map((q) => ({
+        question: q.question || "",
+        header: q.header,
+        options: (q.options || []).map((o) => ({
+          label: o.label || "",
+          description: o.description || "",
+        })),
+        multiSelect: q.multiSelect ?? false,
+      })),
+      askedAt: raw.pendingQuestion.askedAt || "",
+    }
+  }
 
   return {
     sessionId: raw.id || path.basename(filePath, ".json"),
@@ -142,6 +173,7 @@ export async function readSessionSnapshot(filePath: string, mtimeMs?: number): P
     mtimeMs: typeof mtimeMs === "number" ? mtimeMs : stat!.mtimeMs,
     messageCount: messages.length,
     messages,
+    pendingQuestion,
   }
 }
 

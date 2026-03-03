@@ -70,8 +70,46 @@ function firstNarrativeSentence(markdown: string) {
     .filter((line) => !/^#{1,6}\s+/.test(line))
     .filter((line) => !/^\|.*\|$/.test(line))
     .filter((line) => !/^\s*[-*]\s+/.test(line))
+    .filter((line) => !/^\s*\d+\.\s+/.test(line))
 
   return lines.length ? compactWhitespace(lines.join(" ")) : null
+}
+
+function splitKeyValueChunks(markdown: string): Chunk[] {
+  const lines = stripHtmlComments(markdown).split(/\r?\n/)
+  const chunks: Chunk[] = []
+  let current: Chunk | null = null
+
+  const pushCurrent = () => {
+    if (current && current.lines.some((line) => line.trim())) {
+      chunks.push(current)
+    }
+    current = null
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line || /^#{1,6}\s+/.test(line) || /^\|.*\|$/.test(line)) continue
+
+    const match = line.match(
+      /^(?:[-*]\s+)?(?:\*\*([^*]{2,40})\*\*|([A-Za-z][A-Za-z0-9 /&()'-]{1,40}))\s*:\s*(.+)$/,
+    )
+
+    if (match) {
+      pushCurrent()
+      const title = compactWhitespace(stripMarkdownFormatting(match[1] || match[2] || "Overview"))
+      const value = compactWhitespace(stripMarkdownFormatting(match[3] || ""))
+      current = { title, lines: value ? [value] : [] }
+      continue
+    }
+
+    if (current) {
+      current.lines.push(line)
+    }
+  }
+
+  pushCurrent()
+  return chunks
 }
 
 function splitIntoChunks(markdown: string): Chunk[] {
@@ -95,15 +133,23 @@ function splitIntoChunks(markdown: string): Chunk[] {
     chunks.push(current)
   }
 
+  // Fallback for compact markdown that uses "Label: value" lines instead of headings.
+  if (chunks.length <= 1) {
+    const keyValueChunks = splitKeyValueChunks(markdown)
+    if (keyValueChunks.length >= 3) {
+      return keyValueChunks
+    }
+  }
+
   return chunks
 }
 
 function detectKind(lines: string[]): StrategySummaryCard["kind"] {
   const hasTable = lines.some((line) => /^\|.*\|$/.test(line.trim()))
-  const hasList = lines.some((line) => /^\s*[-*]\s+/.test(line))
+  const hasList = lines.some((line) => /^\s*([-*]|\d+\.)\s+/.test(line))
   const textLines = lines.filter((line) => {
     const trimmed = line.trim()
-    return trimmed && !trimmed.startsWith("|") && !trimmed.startsWith("-") && !trimmed.startsWith("*")
+    return trimmed && !trimmed.startsWith("|") && !/^\d+\./.test(trimmed) && !trimmed.startsWith("-") && !trimmed.startsWith("*")
   })
   const hasText = textLines.length > 0
 
@@ -122,8 +168,8 @@ function tableSummary(lines: string[]) {
 
 function listSummary(lines: string[]) {
   const bullets = lines
-    .filter((line) => /^\s*[-*]\s+/.test(line))
-    .map((line) => stripMarkdownFormatting(compactWhitespace(line.replace(/^\s*[-*]\s+/, ""))))
+    .filter((line) => /^\s*([-*]|\d+\.)\s+/.test(line))
+    .map((line) => stripMarkdownFormatting(compactWhitespace(line.replace(/^\s*([-*]|\d+\.)\s+/, ""))))
     .filter(Boolean)
 
   return bullets.slice(0, 2).join(" • ")

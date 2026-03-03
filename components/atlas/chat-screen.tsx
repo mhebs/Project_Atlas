@@ -1,7 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { LatestSessionResponse, SessionTranscript, TranscriptMessage } from "@/lib/atlas-types"
+import type {
+  LatestSessionResponse,
+  PendingQuestion,
+  SessionTranscript,
+  TranscriptMessage,
+} from "@/lib/atlas-types"
 import { MarkdownLite } from "./markdown-lite"
 
 function isNearBottom(element: HTMLDivElement) {
@@ -80,19 +85,19 @@ function MessageBubble({
     return (
       <div className="mb-6">
         <div className="flex justify-end">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#d9b248]/75">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#9A7B2A]">
             You
           </p>
         </div>
         <div className="flex justify-end">
-          <div className="max-w-[85%] rounded-2xl border border-[#c8a43a]/10 bg-[#1e1c17]/80 px-5 py-4 lg:max-w-[70%]">
+          <div className="max-w-[85%] rounded-2xl border border-[#c8a43a]/10 bg-[#1A1507] px-5 py-4 lg:max-w-[70%]">
             <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-[#f3ead8]">
               {message.content}
             </p>
           </div>
         </div>
         <div className="mt-2 flex justify-end">
-          <span className="font-mono text-[10px] text-[#d9d1c3]/40">
+          <span className="font-mono text-[10px] text-[#8C8375]">
             {formatTime(message.timestamp)}
           </span>
         </div>
@@ -110,29 +115,29 @@ function MessageBubble({
     <div className="mb-6">
       <div className="flex items-center gap-3">
         <CompassAvatar />
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#d9b248]/85">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#9A7B2A]">
           Meridian
         </p>
       </div>
       <div className="mt-2 space-y-2 pl-[52px]">
         {hasReasoning && (
-          <div className="max-w-[85%] rounded-2xl border border-[#2b3140]/45 bg-[#0b1018]/65 lg:max-w-[70%]">
+          <div className="max-w-[85%] rounded-2xl border border-[#c8a43a]/25 bg-[#E8E0D0] lg:max-w-[70%]">
             <button
               type="button"
               onClick={onToggleThinking}
               className="flex w-full items-center justify-between px-4 py-2.5 text-left"
             >
-              <span className="font-mono text-[11px] text-[#8a93a6]/70">
+              <span className="font-mono text-[11px] text-[#8C8375]">
                 Thought
                 {isStreaming ? " · live" : ""}
               </span>
-              <span className="font-mono text-[11px] text-[#7d8698]/55">
+              <span className="font-mono text-[11px] text-[#8C8375]">
                 {isThinkingOpen ? "▾" : "▸"}
               </span>
             </button>
             {isThinkingOpen && (
-              <div className="border-t border-[#2f3546]/55 px-4 py-3">
-                <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[#7f889b]/68">
+              <div className="border-t border-[#c8a43a]/20 px-4 py-3">
+                <div className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[#6B6259]">
                   {reasoningText}
                 </div>
               </div>
@@ -141,11 +146,11 @@ function MessageBubble({
         )}
 
         {visibleContent && (
-          <div className="max-w-[85%] rounded-2xl border-l-2 border-[#c8a43a]/20 bg-[#13110e]/80 px-5 py-4 lg:max-w-[70%]">
+          <div className="max-w-[85%] rounded-2xl border-l-2 border-[#c8a43a]/40 bg-[#FFFFFF] px-5 py-4 text-[#2C2617] lg:max-w-[70%]">
             <MarkdownLite markdown={visibleContent} variant="atlas-gold" surface="none" className="break-words" />
           </div>
         )}
-        <span className="block font-mono text-[10px] text-[#d9d1c3]/40">
+        <span className="block font-mono text-[10px] text-[#8C8375]">
           {formatTime(message.timestamp)}
         </span>
       </div>
@@ -153,12 +158,172 @@ function MessageBubble({
   )
 }
 
-export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string } = {}) {
+/* Panel for ask_user questions */
+function QuestionPanel({
+  pendingQuestion,
+  sessionId,
+  onAnswered,
+}: {
+  pendingQuestion: PendingQuestion
+  sessionId: string
+  onAnswered: () => void
+}) {
+  const [selections, setSelections] = useState<Record<number, Set<number>>>({})
+  const [otherTexts, setOtherTexts] = useState<Record<number, string>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const toggleOption = (qIndex: number, optIndex: number, multiSelect: boolean) => {
+    setSelections((prev) => {
+      const current = prev[qIndex] ?? new Set<number>()
+      const next = new Set(current)
+      if (multiSelect) {
+        if (next.has(optIndex)) next.delete(optIndex)
+        else next.add(optIndex)
+      } else {
+        next.clear()
+        next.add(optIndex)
+      }
+      return { ...prev, [qIndex]: next }
+    })
+  }
+
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    setSubmitError(null)
+
+    const answers: Record<string, string> = {}
+    for (let i = 0; i < pendingQuestion.questions.length; i++) {
+      const q = pendingQuestion.questions[i]
+      const selected = selections[i] ?? new Set<number>()
+      const labels = Array.from(selected).map((idx) => q.options[idx]?.label).filter(Boolean)
+      const other = (otherTexts[i] ?? "").trim()
+      if (other) labels.push(other)
+      answers[q.question] = labels.join(", ") || "(no selection)"
+    }
+
+    try {
+      const res = await fetch("/api/sessions/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          questionId: pendingQuestion.id,
+          answers,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setSubmitError(data.error || "Failed to submit")
+      } else {
+        onAnswered()
+      }
+    } catch {
+      setSubmitError("Failed to submit answer")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-6 pb-4">
+      <div className="rounded-2xl border border-[#c8a43a]/25 bg-[#FFFFFF] p-5">
+        <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-[#9A7B2A]">
+          Meridian needs your input
+        </p>
+
+        {pendingQuestion.questions.map((q, qIndex) => (
+          <div key={qIndex} className="mb-5 last:mb-0">
+            {q.header && (
+              <span className="mb-1 inline-block rounded-full border border-[#c8a43a]/20 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#9A7B2A]">
+                {q.header}
+              </span>
+            )}
+            <p className="mb-3 text-[15px] leading-relaxed text-[#2C2617]">{q.question}</p>
+
+            <div className="space-y-2">
+              {q.options.map((opt, optIndex) => {
+                const isSelected = selections[qIndex]?.has(optIndex) ?? false
+                return (
+                  <button
+                    key={optIndex}
+                    type="button"
+                    onClick={() => toggleOption(qIndex, optIndex, q.multiSelect)}
+                    className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                      isSelected
+                        ? "border-[#c8a43a]/40 bg-[#c8a43a]/10"
+                        : "border-[#c8a43a]/15 bg-[#F5F0E8] hover:border-[#c8a43a]/25"
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-${q.multiSelect ? "sm" : "full"} border ${
+                        isSelected
+                          ? "border-[#d4af37] bg-[#d4af37]"
+                          : "border-[#c8a43a]/30"
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5L4 7L8 3" stroke="#1a1507" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </span>
+                    <div>
+                      <p className="text-[14px] font-medium text-[#2C2617]">{opt.label}</p>
+                      <p className="mt-0.5 text-[13px] text-[#8C8375]">{opt.description}</p>
+                    </div>
+                  </button>
+                )
+              })}
+
+              {/* Other / free-text */}
+              <div className="flex items-center gap-3 rounded-xl border border-[#c8a43a]/15 bg-[#F5F0E8] px-4 py-3">
+                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-[#c8a43a]/30" />
+                <input
+                  type="text"
+                  placeholder="Other..."
+                  value={otherTexts[qIndex] ?? ""}
+                  onChange={(e) => setOtherTexts((prev) => ({ ...prev, [qIndex]: e.target.value }))}
+                  className="w-full bg-transparent text-[14px] text-[#2C2617] placeholder:text-[#8C8375] focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {submitError && (
+          <p className="mt-2 font-mono text-[11px] text-[#f2a6a6]/70">{submitError}</p>
+        )}
+
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => void handleSubmit()}
+          className={`mt-4 rounded-xl px-6 py-2.5 font-mono text-[12px] uppercase tracking-wider transition-colors ${
+            submitting
+              ? "cursor-not-allowed bg-[#d4af37]/30 text-[#1a1507]/60"
+              : "cursor-pointer bg-[#d4af37]/80 text-[#1a1507] hover:bg-[#d4af37]"
+          }`}
+        >
+          {submitting ? "Submitting..." : "Submit"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+interface ChatScreenProps {
+  autoTriggerMessage?: string
+  onAutoTriggerFired?: () => void
+}
+
+export function ChatScreen({ autoTriggerMessage, onAutoTriggerFired }: ChatScreenProps = {}) {
   const [snapshot, setSnapshot] = useState<LatestSessionResponse | null>(null)
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [latestLoaded, setLatestLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "closed">(
     "connecting",
@@ -211,9 +376,11 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
     previousStreamingAssistantIndexRef.current = activeStreamingAssistantIndex
   }, [activeStreamingAssistantIndex])
 
+  const isAwaitingInput = snapshot?.status === "awaiting_input"
+
   const handleSend = async () => {
     const text = input.trim()
-    if (!text || sending) return
+    if (!text || sending || isAwaitingInput) return
 
     setSending(true)
     setInput("")
@@ -255,7 +422,10 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
         if (!mounted) return
         setError(loadError instanceof Error ? loadError.message : "Failed to load latest session")
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) {
+          setLoading(false)
+          setLatestLoaded(true)
+        }
       }
     }
 
@@ -302,6 +472,7 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
           status: SessionTranscript["status"]
           endedAt: string | null
           error: string | null
+          pendingQuestion?: PendingQuestion | null
         }
 
         setSnapshot((prev) => {
@@ -311,6 +482,7 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
             status: payload.status,
             endedAt: payload.endedAt,
             error: payload.error,
+            pendingQuestion: payload.pendingQuestion ?? null,
           } as SessionTranscript
         })
       })
@@ -335,12 +507,14 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
     if (
       !autoTriggerMessage ||
       autoTriggerFiredRef.current ||
+      !latestLoaded ||
       connectionState !== "live" ||
       messages.length > 0
     ) {
       return
     }
     autoTriggerFiredRef.current = true
+    onAutoTriggerFired?.()
     void (async () => {
       try {
         await fetch("/api/agent/trigger", {
@@ -352,7 +526,7 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
         // Silently fail — user can still type manually
       }
     })()
-  }, [autoTriggerMessage, connectionState, messages.length])
+  }, [autoTriggerMessage, connectionState, latestLoaded, messages.length, onAutoTriggerFired])
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -361,17 +535,17 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
   }, [streamRenderKey])
 
   return (
-    <div className="flex h-full flex-col bg-[#060606]">
+    <div className="flex h-full flex-col bg-[#F5F0E8]">
       {(loading || error || connectionState === "live") && (
         <div className="flex items-center justify-end gap-2 px-6 pt-4 pb-1">
           {connectionState === "live" && (
             <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#3d6b4f]" />
-              <span className="font-mono text-[10px] text-[#d9d1c3]/35">Live</span>
+              <span className="h-2.5 w-2.5 rounded-full bg-[#D4AF37]" style={{ boxShadow: "0 0 8px #D4AF37, 0 0 16px rgba(212,175,55,0.5)" }} />
+              <span className="font-mono text-[12px] font-semibold text-[#9A7B2A]">Live</span>
             </span>
           )}
           {loading && (
-            <span className="font-mono text-[10px] text-[#d9d1c3]/35">Loading...</span>
+            <span className="font-mono text-[10px] text-[#8C8375]">Loading...</span>
           )}
           {error && (
             <span className="font-mono text-[10px] text-[#f2a6a6]/70">{error}</span>
@@ -392,10 +566,10 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
               <div className="mx-auto mb-4">
                 <CompassAvatar />
               </div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#d9b248]/60">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9A7B2A]">
                 Meridian
               </p>
-              <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#d9d1c3]/50">
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#8C8375]">
                 No conversation yet. Send a message to start a session.
               </p>
             </div>
@@ -420,9 +594,23 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
         )}
       </div>
 
+      {/* Question panel when awaiting user input */}
+      {snapshot &&
+        snapshot.status === "awaiting_input" &&
+        snapshot.pendingQuestion &&
+        snapshot.sessionId && (
+          <QuestionPanel
+            pendingQuestion={snapshot.pendingQuestion}
+            sessionId={snapshot.sessionId}
+            onAnswered={() => {
+              // Panel will disappear when SSE delivers the status change
+            }}
+          />
+        )}
+
       <div className="px-6 pb-6 pt-2">
         <div className="mx-auto flex max-w-3xl items-end gap-3">
-          <div className="flex-1 rounded-2xl border border-[#c8a43a]/15 bg-[#13110e]/80 px-5 py-4">
+          <div className={`flex-1 rounded-2xl border border-[#c8a43a]/25 bg-[#FFFFFF] px-5 py-4 ${isAwaitingInput ? "opacity-50" : ""}`}>
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -432,17 +620,18 @@ export function ChatScreen({ autoTriggerMessage }: { autoTriggerMessage?: string
                   void handleSend()
                 }
               }}
-              placeholder="Type your message..."
+              placeholder={isAwaitingInput ? "Answer the question above first..." : "Type your message..."}
               rows={1}
-              className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[#f7eedb] placeholder:text-[#d9d1c3]/35 focus:outline-none"
+              disabled={isAwaitingInput}
+              className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[#2C2617] placeholder:text-[#8C8375] focus:outline-none disabled:cursor-not-allowed"
             />
           </div>
           <button
             type="button"
-            disabled={sending || !input.trim()}
+            disabled={sending || !input.trim() || isAwaitingInput}
             onClick={() => void handleSend()}
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors ${
-              sending || !input.trim()
+              sending || !input.trim() || isAwaitingInput
                 ? "cursor-not-allowed bg-[#d4af37]/40"
                 : "cursor-pointer bg-[#d4af37]/80 hover:bg-[#d4af37]"
             }`}

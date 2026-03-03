@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "@/components/atlas/sidebar"
 import { MobileNav } from "@/components/atlas/mobile-nav"
 import { ChatScreen } from "@/components/atlas/chat-screen"
@@ -22,6 +22,7 @@ const AUTO_TRIGGER_MESSAGE =
 export default function Home() {
   const [activeView, setActiveView] = useState<AtlasView>("chat")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [onboardingAutoTriggerConsumed, setOnboardingAutoTriggerConsumed] = useState(false)
   const { phase, loading, dismissSplash, completeActivation } = useOnboarding()
 
   // TODO: Re-enable sidebar locks once onboarding flow is finalized
@@ -33,6 +34,12 @@ export default function Home() {
   const handleNavigate = (view: AtlasView) => {
     setActiveView(view)
   }
+
+  useEffect(() => {
+    if (phase !== "chat_onboarding") {
+      setOnboardingAutoTriggerConsumed(false)
+    }
+  }, [phase])
 
   if (loading) {
     return <div className="min-h-screen bg-[#060606]" />
@@ -66,7 +73,12 @@ export default function Home() {
         <div className="h-full transition-opacity duration-200">
           {effectiveView === "chat" && (
             <ChatScreen
-              autoTriggerMessage={phase === "chat_onboarding" ? AUTO_TRIGGER_MESSAGE : undefined}
+              autoTriggerMessage={
+                phase === "chat_onboarding" && !onboardingAutoTriggerConsumed
+                  ? AUTO_TRIGGER_MESSAGE
+                  : undefined
+              }
+              onAutoTriggerFired={() => setOnboardingAutoTriggerConsumed(true)}
             />
           )}
           {effectiveView === "strategy" && <StrategyScreen />}
