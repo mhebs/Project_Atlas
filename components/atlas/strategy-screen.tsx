@@ -66,13 +66,8 @@ export function StrategyScreen() {
     mountedRef.current = true
     void load()
 
-    const interval = setInterval(() => {
-      void load(true)
-    }, 5000)
-
     return () => {
       mountedRef.current = false
-      clearInterval(interval)
     }
   }, [load])
 
@@ -246,6 +241,22 @@ export function StrategyScreen() {
               <button className="mt-10 w-full cursor-pointer rounded-2xl bg-[#d4af37] px-8 py-5 text-center text-lg font-semibold text-[#1a1507] shadow-[0_8px_30px_rgba(212,175,55,0.25)] transition-all hover:bg-[#e0bf4a] hover:shadow-[0_8px_40px_rgba(212,175,55,0.35)] active:scale-[0.99]">
                 Activate Atlas →
               </button>
+
+              {/* Raw STRATEGY.md */}
+              {summary.rawContent && (
+                <section className="mt-10 w-full overflow-hidden rounded-2xl border border-[#c8a43a]/25 bg-[#FFFFFF] shadow-[0_30px_80px_rgba(0,0,0,0.08)]">
+                  <div className="border-b border-[#c8a43a]/12 px-6 py-4">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9A7B2A]">
+                      STRATEGY.MD — RAW
+                    </p>
+                  </div>
+                  <div className="px-6 py-5">
+                    <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-[#3D3527]">
+                      {summary.rawContent}
+                    </pre>
+                  </div>
+                </section>
+              )}
 
               {/* Footer */}
               <p className="mt-6 text-center text-[13px] text-[#8C8375]">

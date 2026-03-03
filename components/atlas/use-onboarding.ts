@@ -53,13 +53,9 @@ export function useOnboarding() {
         setStrategyExists(true)
         // Strategy exists but user hasn't been marked as onboarded.
         // If strategy is older than 5 minutes, skip the animation.
-        const age = strategy.mtimeMs ? Date.now() - strategy.mtimeMs : Infinity
-        if (age > 5 * 60 * 1000) {
-          localStorage.setItem(ONBOARDED_KEY, "true")
-          setPhase("done")
-        } else {
-          setPhase("strategy_activated")
-        }
+        // Skip the strategy_activated overlay — stay on chat
+        localStorage.setItem(ONBOARDED_KEY, "true")
+        setPhase("done")
       } else if (localStorage.getItem(SPLASH_KEY) === "true") {
         setPhase("chat_onboarding")
       } else {
@@ -90,7 +86,9 @@ export function useOnboarding() {
       if (!mountedRef.current) return
       if (strategy.exists) {
         setStrategyExists(true)
-        setPhase("strategy_activated")
+        // Stay on chat — skip the strategy_activated overlay for now
+        localStorage.setItem(ONBOARDED_KEY, "true")
+        setPhase("done")
       }
     }, POLL_INTERVAL_MS)
 

@@ -735,9 +735,8 @@ export async function buildStrategySummary(): Promise<StrategySummaryResponse> {
   }
 
   const heuristicCards = buildHeuristicCards(doc.content)
-  const translated = await translateMarkdownToPresentation(doc.content, heuristicCards)
-  const cards = translated?.cards ?? heuristicCards
-  const presentation = translated?.presentation ?? buildHeuristicPresentation(doc.content, cards, "heuristic")
+  const cards = heuristicCards
+  const presentation = buildHeuristicPresentation(doc.content, cards, "heuristic")
 
   return {
     file: "STRATEGY.md",

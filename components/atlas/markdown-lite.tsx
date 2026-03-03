@@ -64,8 +64,12 @@ function InlineText({ text }: { text: string }) {
   return <>{parts}</>
 }
 
+function normalizeEscapedNewlines(text: string): string {
+  return text.replace(/\\n/g, "\n")
+}
+
 function parseMarkdownLite(markdown: string): MarkdownBlock[] {
-  const lines = stripComments(markdown).split(/\r?\n/)
+  const lines = stripComments(normalizeEscapedNewlines(markdown)).split(/\r?\n/)
   const blocks: MarkdownBlock[] = []
   let i = 0
 
