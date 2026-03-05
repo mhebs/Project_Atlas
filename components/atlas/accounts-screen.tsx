@@ -55,8 +55,8 @@ export function AccountsScreen() {
         <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
         {!isError && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Files reset: {resetResult.filesReset.length} | Sessions deleted: {resetResult.sessionsDeleted} |
-            Trades log cleared: {resetResult.tradesLogCleared ? "yes" : "no"}
+            Files reset: {resetResult.filesReset.length} | Chat history cleared: yes |
+            Sessions deleted: {resetResult.sessionsDeleted} | Trades log cleared: {resetResult.tradesLogCleared ? "yes" : "no"}
           </p>
         )}
         {resetResult.warnings.length > 0 && (
@@ -138,8 +138,8 @@ export function AccountsScreen() {
         <AlertDialogHeader>
           <AlertDialogTitle>Reset test state?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will reset markdown state, clear session and trades logs, and try to liquidate all paper positions
-            if markets are open.
+            This will reset markdown state, clear chat history, session and trades logs, and try to liquidate all
+            paper positions if markets are open.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
