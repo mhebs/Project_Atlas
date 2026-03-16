@@ -1,9 +1,14 @@
+import crypto from "node:crypto"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import fs from "node:fs/promises"
 import path from "node:path"
 import type { DebugResetBrokerSnapshot, DebugResetMode, DebugResetResponse } from "@/lib/atlas-types"
 import { getRepoRoot, getSessionsDir, getWorkspaceRoot } from "./config"
 import { loadRepoEnv } from "./env-loader"
 import { buildResetMarkdownFiles, RESETTABLE_WORKSPACE_FILES, type ResettableWorkspaceFile } from "./reset-templates"
+
+const execFileAsync = promisify(execFile)
 
 const ALPACA_PAPER_BASE_URL = "https://paper-api.alpaca.markets"
 const LIQUIDATION_TIMEOUT_MS = 45_000
@@ -211,6 +216,10 @@ async function writeResetFiles(
     }),
   )
 
+  // Also remove the strategy-confirmed signal file
+  const signalPath = path.resolve(workspaceRoot, ".strategy-confirmed")
+  await fs.rm(signalPath, { force: true })
+
   return [...RESETTABLE_WORKSPACE_FILES]
 }
 
@@ -233,6 +242,60 @@ async function clearTradesLog(workspaceRoot: string) {
   const tradesLogPath = path.join(workspaceRoot, "trades.jsonl")
   await fs.writeFile(tradesLogPath, "", "utf-8")
   return true
+}
+
+async function clearWakeFiles(workspaceRoot: string) {
+  const policyPath = path.join(workspaceRoot, "WAKE_POLICY.json")
+  const auditPath = path.join(workspaceRoot, "WAKE_AUDIT.jsonl")
+
+  await Promise.all([
+    fs.writeFile(policyPath, "", "utf-8").catch(() => {}),
+    fs.writeFile(auditPath, "", "utf-8").catch(() => {}),
+  ])
+}
+
+async function clearWakeCrontab(workspaceRoot: string) {
+  const cronTag = "AUTONOMOUS-INVESTING"
+  const hash = crypto
+    .createHash("sha1")
+    .update(path.resolve(workspaceRoot))
+    .digest("hex")
+    .slice(0, 12)
+
+  const startMarker = `# BEGIN ${cronTag}:${hash}`
+  const endMarker = `# END ${cronTag}:${hash}`
+
+  let existing: string
+  try {
+    const { stdout } = await execFileAsync("crontab", ["-l"])
+    existing = stdout
+  } catch {
+    return // no crontab, nothing to clear
+  }
+
+  if (!existing.includes(startMarker)) return
+
+  const lines = existing.replace(/\r/g, "").split("\n")
+  const startIdx = lines.findIndex((l) => l.trim() === startMarker)
+  const endIdx = startIdx >= 0
+    ? lines.findIndex((l, i) => i > startIdx && l.trim() === endMarker)
+    : -1
+
+  if (startIdx < 0 || endIdx < 0) return
+
+  const next = [...lines.slice(0, startIdx), ...lines.slice(endIdx + 1)]
+  const trimmed = next.join("\n").replace(/\n{3,}/g, "\n\n").trim()
+  const content = trimmed ? `${trimmed}\n` : ""
+
+  const os = await import("node:os")
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "wake-reset-"))
+  const tmpFile = path.join(tmpDir, "crontab.txt")
+  try {
+    await fs.writeFile(tmpFile, content, "utf-8")
+    await execFileAsync("crontab", [tmpFile])
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true })
+  }
 }
 
 export function isDebugResetError(error: unknown): error is DebugResetError {
@@ -285,6 +348,17 @@ export async function runDebugReset(): Promise<DebugResetResponse> {
     const sessionsDeleted = await clearSessionFiles(sessionsDir)
     const tradesLogCleared = await clearTradesLog(workspaceRoot)
 
+    let wakeSchedulesCleared = false
+    try {
+      await clearWakeFiles(workspaceRoot)
+      await clearWakeCrontab(workspaceRoot)
+      wakeSchedulesCleared = true
+    } catch (error) {
+      warnings.push(
+        `Failed to clear wake schedules: ${error instanceof Error ? error.message : "unknown error"}`,
+      )
+    }
+
     return {
       ok: true,
       mode,
@@ -292,6 +366,7 @@ export async function runDebugReset(): Promise<DebugResetResponse> {
       filesReset,
       sessionsDeleted,
       tradesLogCleared,
+      wakeSchedulesCleared,
       warnings,
       error: null,
     }

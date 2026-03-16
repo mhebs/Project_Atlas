@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Sidebar } from "@/components/atlas/sidebar"
 import { MobileNav } from "@/components/atlas/mobile-nav"
 import { ChatScreen } from "@/components/atlas/chat-screen"
+import { ChatScreenV2 } from "@/components/atlas/chat-screen-v2"
 import { StrategyScreen } from "@/components/atlas/strategy-screen"
 import { PortfolioScreen } from "@/components/atlas/portfolio-screen"
 import { ActivityScreen } from "@/components/atlas/activity-screen"
@@ -11,14 +12,17 @@ import { AccountsScreen } from "@/components/atlas/accounts-screen"
 import { UserScreen } from "@/components/atlas/user-screen"
 import { SplashOverlay } from "@/components/atlas/splash-overlay"
 import { StrategyActivatedOverlay } from "@/components/atlas/strategy-activated-overlay"
+import { StrategyCreationOverlay, StrategyApprovalOverlay } from "@/components/atlas/onboarding"
 import { useOnboarding } from "@/components/atlas/use-onboarding"
 import type { AtlasView } from "@/components/atlas/view-types"
+
+const USE_AI_SDK_CHAT = process.env.NEXT_PUBLIC_USE_AI_SDK_CHAT === "true"
 
 export default function Home() {
   const [activeView, setActiveView] = useState<AtlasView>("chat")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [justActivated, setJustActivated] = useState(false)
-  const { phase, loading, dismissSplash, completeActivation } = useOnboarding()
+  const { phase, loading, dismissSplash, selectStrategyPath, approveStrategy, editStrategy, completeActivation } = useOnboarding()
 
   const isOnboarding = phase !== "done"
 
@@ -45,6 +49,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {phase === "splash" && <SplashOverlay onDismiss={dismissSplash} />}
+      {phase === "strategy_creation" && (
+        <StrategyCreationOverlay onSelectPath={selectStrategyPath} />
+      )}
+      {phase === "strategy_approval" && (
+        <StrategyApprovalOverlay onApprove={approveStrategy} onEdit={editStrategy} />
+      )}
       {phase === "strategy_activated" && (
         <StrategyActivatedOverlay onComplete={handleActivate} />
       )}
@@ -73,8 +83,10 @@ export default function Home() {
         }`}
       >
         <div className="h-full transition-opacity duration-200">
-          {activeView === "chat" && (
-            <ChatScreen isOnboarding={isOnboarding} />
+          {activeView === "chat" && phase !== "splash" && phase !== "strategy_creation" && (
+            USE_AI_SDK_CHAT
+              ? <ChatScreenV2 isOnboarding={isOnboarding} />
+              : <ChatScreen isOnboarding={isOnboarding} />
           )}
           {activeView === "strategy" && <StrategyScreen />}
           {activeView === "portfolio" && <PortfolioScreen />}

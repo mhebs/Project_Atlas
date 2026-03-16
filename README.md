@@ -200,8 +200,8 @@ The CLI agent continues to work without this frontend.
 
 ### Notes
 
-- The chat screen streams the latest session transcript via SSE by reading `workspace/sessions/*.json`.
-- Phase 1 is intentionally read-focused: chat composer is present but sending is stubbed.
+- The chat screen sends messages through `POST /api/chat/turn` and renders direct item/delta events from the agent.
+- `workspace/sessions/*.json` is used for persistence and reload history, not live streaming.
 - Strategy, Portfolio, and User screens are markdown-driven views over the workspace files.
 
 ## Claude CLI Runtime Requirements

@@ -51,3 +51,14 @@ export function getAllowedWorkspaceFiles() {
   return Array.from(ALLOWED_WORKSPACE_FILES.values())
 }
 
+export async function readStrategyConfirmed(): Promise<{ confirmed: boolean; timestamp: string | null }> {
+  const workspaceRoot = getWorkspaceRoot()
+  const filePath = path.resolve(workspaceRoot, ".strategy-confirmed")
+  try {
+    const content = await fs.readFile(filePath, "utf-8")
+    return { confirmed: true, timestamp: content.trim() || null }
+  } catch {
+    return { confirmed: false, timestamp: null }
+  }
+}
+

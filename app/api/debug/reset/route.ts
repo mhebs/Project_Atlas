@@ -20,6 +20,7 @@ export async function POST() {
       filesReset: [],
       sessionsDeleted: 0,
       tradesLogCleared: false,
+      wakeSchedulesCleared: false,
       warnings: [],
       error: message,
     }

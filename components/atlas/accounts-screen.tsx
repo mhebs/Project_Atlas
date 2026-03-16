@@ -56,7 +56,7 @@ export function AccountsScreen() {
         {!isError && (
           <p className="mt-2 text-xs text-muted-foreground">
             Files reset: {resetResult.filesReset.length} | Chat history cleared: yes |
-            Sessions deleted: {resetResult.sessionsDeleted} | Trades log cleared: {resetResult.tradesLogCleared ? "yes" : "no"}
+            Sessions deleted: {resetResult.sessionsDeleted} | Trades log cleared: {resetResult.tradesLogCleared ? "yes" : "no"} | Wake schedules cleared: {resetResult.wakeSchedulesCleared ? "yes" : "no"}
           </p>
         )}
         {resetResult.warnings.length > 0 && (
@@ -89,6 +89,7 @@ export function AccountsScreen() {
         filesReset: Array.isArray(data.filesReset) ? data.filesReset : [],
         sessionsDeleted: typeof data.sessionsDeleted === "number" ? data.sessionsDeleted : 0,
         tradesLogCleared: Boolean(data.tradesLogCleared),
+        wakeSchedulesCleared: Boolean(data.wakeSchedulesCleared),
         warnings: Array.isArray(data.warnings) ? data.warnings : [],
         error: typeof data.error === "string" ? data.error : response.ok ? null : "Failed to run debug reset",
       }
@@ -114,6 +115,7 @@ export function AccountsScreen() {
         filesReset: [],
         sessionsDeleted: 0,
         tradesLogCleared: false,
+        wakeSchedulesCleared: false,
         warnings: [],
         error: error instanceof Error ? error.message : "Failed to run debug reset",
       })

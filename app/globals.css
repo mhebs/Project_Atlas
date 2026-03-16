@@ -40,12 +40,21 @@
   --sidebar-muted: #5a5550;
   --gain: #3d6b4f;
   --loss: #9b3b3b;
+  --ob-ink: #0a0f0c;
+  --ob-parchment: #f0ede6;
+  --ob-accent: #1a3a2a;
+  --ob-accent-bright: #2d6b47;
+  --ob-gold: #c4a84f;
+  --ob-muted: #7a7669;
+  --ob-border: rgba(0,0,0,0.10);
+  --ob-border-dark: rgba(255,255,255,0.06);
+  --ob-error: #c84040;
 }
 
 @theme inline {
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-lora);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-instrument-serif);
+  --font-mono: var(--font-dm-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -85,6 +94,15 @@
   --color-sidebar-muted: var(--sidebar-muted);
   --color-gain: var(--gain);
   --color-loss: var(--loss);
+  --color-ob-ink: var(--ob-ink);
+  --color-ob-parchment: var(--ob-parchment);
+  --color-ob-accent: var(--ob-accent);
+  --color-ob-accent-bright: var(--ob-accent-bright);
+  --color-ob-gold: var(--ob-gold);
+  --color-ob-muted: var(--ob-muted);
+  --color-ob-border: var(--ob-border);
+  --color-ob-border-dark: var(--ob-border-dark);
+  --color-ob-error: var(--ob-error);
 }
 
 @keyframes starDrift {
@@ -110,6 +128,53 @@
 @keyframes slideInFromLeft {
   from { opacity: 0; transform: translateX(-20px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+/* prompt-kit loader keyframes */
+@keyframes shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+@keyframes spinner-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+@keyframes thin-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+@keyframes bounce-dots {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+@keyframes typing {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+@keyframes wave-bars {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes text-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes loading-dots {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 @layer base {

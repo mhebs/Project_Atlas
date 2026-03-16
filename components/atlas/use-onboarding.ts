@@ -2,17 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { OnboardingPhase } from "./onboarding-types"
-import { isPlaceholderContent } from "./onboarding-types"
+import type { StrategyPathId } from "./onboarding/strategy-paths"
 
 const SPLASH_KEY = "atlas:splash_dismissed"
 const ONBOARDED_KEY = "atlas:onboarded"
 const STRATEGY_DETECTED_KEY = "atlas:strategy_detected"
+const STRATEGY_PATH_KEY = "atlas:strategy_path"
+const STRATEGY_SEED_KEY = "atlas:strategy_seed"
+const STRATEGY_APPROVED_KEY = "atlas:strategy_approved"
 const POLL_INTERVAL_MS = 3000
 
 interface StrategySummaryCheck {
+  confirmed: boolean
   exists: boolean
-  rawContent?: string
-  mtimeMs?: number | null
 }
 
 export function useOnboarding() {
@@ -25,12 +27,11 @@ export function useOnboarding() {
   const checkStrategy = useCallback(async (): Promise<StrategySummaryCheck> => {
     try {
       const res = await fetch("/api/workspace/strategy-summary", { cache: "no-store" })
-      if (!res.ok) return { exists: false }
+      if (!res.ok) return { confirmed: false, exists: false }
       const data = await res.json()
-      const hasReal = !isPlaceholderContent(data.rawContent)
-      return { exists: hasReal, rawContent: data.rawContent, mtimeMs: data.mtimeMs ?? null }
+      return { confirmed: !!data.confirmed, exists: data.exists }
     } catch {
-      return { exists: false }
+      return { confirmed: false, exists: false }
     }
   }, [])
 
@@ -50,21 +51,21 @@ export function useOnboarding() {
       const strategy = await checkStrategy()
       if (!mountedRef.current) return
 
-      if (strategy.exists) {
+      if (strategy.confirmed) {
         setStrategyExists(true)
-        // Strategy exists but user hasn't completed onboarding.
-        // Show strategy review overlay so they can activate.
-        if (localStorage.getItem(STRATEGY_DETECTED_KEY) === "true") {
-          // Returning to strategy review after refresh
+        localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
+        if (localStorage.getItem(STRATEGY_APPROVED_KEY) === "true") {
           setPhase("strategy_activated")
         } else {
-          // Strategy was already there on first load (e.g. pre-existing)
-          // Still show the review screen
-          localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
-          setPhase("strategy_activated")
+          setPhase("strategy_approval")
         }
       } else if (localStorage.getItem(SPLASH_KEY) === "true") {
-        setPhase("chat_onboarding")
+        // Splash dismissed — check if strategy path was chosen
+        if (localStorage.getItem(STRATEGY_PATH_KEY)) {
+          setPhase("chat_onboarding")
+        } else {
+          setPhase("strategy_creation")
+        }
       } else {
         setPhase("splash")
       }
@@ -78,7 +79,7 @@ export function useOnboarding() {
     }
   }, [checkStrategy])
 
-  // Poll during chat_onboarding to detect when agent writes STRATEGY.md
+  // Poll during chat_onboarding to detect when agent calls confirm_strategy
   useEffect(() => {
     if (phase !== "chat_onboarding") {
       if (pollRef.current) {
@@ -91,10 +92,10 @@ export function useOnboarding() {
     pollRef.current = setInterval(async () => {
       const strategy = await checkStrategy()
       if (!mountedRef.current) return
-      if (strategy.exists) {
+      if (strategy.confirmed) {
         setStrategyExists(true)
         localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
-        setPhase("strategy_activated")
+        setPhase("strategy_approval")
       }
     }, POLL_INTERVAL_MS)
 
@@ -108,14 +109,36 @@ export function useOnboarding() {
 
   const dismissSplash = useCallback(() => {
     localStorage.setItem(SPLASH_KEY, "true")
+    setPhase("strategy_creation")
+  }, [])
+
+  const selectStrategyPath = useCallback((pathId: StrategyPathId, seed?: string) => {
+    localStorage.setItem(STRATEGY_PATH_KEY, pathId)
+    if (seed) {
+      localStorage.setItem(STRATEGY_SEED_KEY, seed)
+    } else {
+      localStorage.removeItem(STRATEGY_SEED_KEY)
+    }
+    setPhase("chat_onboarding")
+  }, [])
+
+  const approveStrategy = useCallback(() => {
+    localStorage.setItem(STRATEGY_APPROVED_KEY, "true")
+    setPhase("strategy_activated")
+  }, [])
+
+  const editStrategy = useCallback(() => {
     setPhase("chat_onboarding")
   }, [])
 
   const completeActivation = useCallback(() => {
     localStorage.setItem(ONBOARDED_KEY, "true")
     localStorage.removeItem(STRATEGY_DETECTED_KEY)
+    localStorage.removeItem(STRATEGY_PATH_KEY)
+    localStorage.removeItem(STRATEGY_SEED_KEY)
+    localStorage.removeItem(STRATEGY_APPROVED_KEY)
     setPhase("done")
   }, [])
 
-  return { phase, loading, dismissSplash, completeActivation, strategyExists }
+  return { phase, loading, dismissSplash, selectStrategyPath, approveStrategy, editStrategy, completeActivation, strategyExists }
 }

@@ -1,21 +1,20 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Lora, JetBrains_Mono } from 'next/font/google'
+import { Instrument_Serif, DM_Mono } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const inter = Inter({
+const instrumentSerif = Instrument_Serif({
+  weight: '400',
   subsets: ['latin'],
-  variable: '--font-inter',
+  style: ['normal', 'italic'],
+  variable: '--font-instrument-serif',
 })
 
-const lora = Lora({
+const dmMono = DM_Mono({
+  weight: ['300', '400'],
   subsets: ['latin'],
-  variable: '--font-lora',
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
+  variable: '--font-dm-mono',
 })
 
 export const metadata: Metadata = {
@@ -53,7 +52,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${lora.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
+      <body className={`${GeistSans.variable} ${instrumentSerif.variable} ${dmMono.variable} font-sans antialiased`}>
         {children}
         <Analytics />
       </body>

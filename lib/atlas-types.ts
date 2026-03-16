@@ -108,6 +108,67 @@ export interface EmptySessionTranscript {
 
 export type LatestSessionResponse = SessionTranscript | EmptySessionTranscript
 
+export interface ChatStreamToolCall {
+  id: string
+  name: string
+  arguments: string
+}
+
+export interface ChatStreamItem {
+  index: number
+  timestamp: string
+  role: TranscriptRole
+  content: string
+  reasoning: string | null
+  toolCalls: ChatStreamToolCall[]
+  toolCallId: string | null
+  name: string | null
+}
+
+export type ChatStreamEvent =
+  | {
+      type: "turn/started"
+      threadId: string
+      status: SessionTranscript["status"]
+      startedAt: string
+      pendingQuestion: PendingQuestion | null
+    }
+  | {
+      type: "turn/updated" | "turn/completed"
+      threadId: string
+      status: SessionTranscript["status"]
+      endedAt: string | null
+      error: string | null
+      pendingQuestion: PendingQuestion | null
+    }
+  | {
+      type: "item/started" | "item/updated" | "item/completed"
+      threadId: string
+      itemId: string
+      item: ChatStreamItem
+    }
+  | {
+      type: "item/agentMessage/delta"
+      threadId: string
+      itemId: string
+      index: number
+      delta: string
+    }
+  | {
+      type: "item/reasoning/delta"
+      threadId: string
+      itemId: string
+      index: number
+      delta: string
+    }
+  | {
+      type: "error"
+      message: string
+    }
+  | {
+      type: "end"
+    }
+
 export type DebugResetMode = "full" | "partial_market_closed"
 
 export interface DebugResetPosition {
@@ -136,6 +197,7 @@ export interface DebugResetResponse {
   filesReset: string[]
   sessionsDeleted: number
   tradesLogCleared: boolean
+  wakeSchedulesCleared: boolean
   warnings: string[]
   error: string | null
 }
