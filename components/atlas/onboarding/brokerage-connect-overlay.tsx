@@ -48,8 +48,8 @@ export function BrokerageConnectOverlay({ onConnect, onBack }: BrokerageConnectO
             </>
           }
           subheading="Your capital stays with Alpaca at all times. Atlas never touches your funds."
-          currentStep={2}
-          totalSteps={4}
+          currentStep={3}
+          totalSteps={5}
         />
       </div>
 

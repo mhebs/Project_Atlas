@@ -12,7 +12,7 @@ import { AccountsScreen } from "@/components/atlas/accounts-screen"
 import { UserScreen } from "@/components/atlas/user-screen"
 import { SplashOverlay } from "@/components/atlas/splash-overlay"
 import { StrategyActivatedOverlay } from "@/components/atlas/strategy-activated-overlay"
-import { StrategyCreationOverlay, BrokerageConnectOverlay, StrategyApprovalOverlay } from "@/components/atlas/onboarding"
+import { StrategyCreationOverlay, BrokerageChoiceOverlay, BrokerageConnectOverlay, StrategyApprovalOverlay } from "@/components/atlas/onboarding"
 import { useOnboarding } from "@/components/atlas/use-onboarding"
 import type { AtlasView } from "@/components/atlas/view-types"
 
@@ -22,7 +22,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState<AtlasView>("chat")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [justActivated, setJustActivated] = useState(false)
-  const { phase, loading, dismissSplash, selectStrategyPath, connectBrokerage, goBackFromBrokerage, approveStrategy, editStrategy, completeActivation } = useOnboarding()
+  const { phase, loading, strategyReady, dismissSplash, selectStrategyPath, advanceFromChat, goBackToStrategyCreation, selectBrokerageOption, goBackFromBrokerageChoice, connectBrokerage, goBackFromBrokerage, approveStrategy, editStrategy, completeActivation } = useOnboarding()
 
   const isOnboarding = phase !== "done"
 
@@ -48,9 +48,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Solid backdrop prevents chat bleed-through during overlay transitions */}
+      {phase !== "done" && phase !== "chat_onboarding" && (
+        <div className="fixed inset-0 z-40 bg-ob-parchment" aria-hidden="true" />
+      )}
+
       {phase === "splash" && <SplashOverlay onDismiss={dismissSplash} />}
       {phase === "strategy_creation" && (
         <StrategyCreationOverlay onSelectPath={selectStrategyPath} />
+      )}
+      {phase === "brokerage_choice" && (
+        <BrokerageChoiceOverlay onChooseExisting={selectBrokerageOption} onBack={goBackFromBrokerageChoice} />
       )}
       {phase === "brokerage_connect" && (
         <BrokerageConnectOverlay onConnect={connectBrokerage} onBack={goBackFromBrokerage} />
@@ -88,8 +96,8 @@ export default function Home() {
         <div className="h-full transition-opacity duration-200">
           {activeView === "chat" && phase !== "splash" && phase !== "strategy_creation" && (
             USE_AI_SDK_CHAT
-              ? <ChatScreenV2 isOnboarding={isOnboarding} />
-              : <ChatScreen isOnboarding={isOnboarding} />
+              ? <ChatScreenV2 isOnboarding={isOnboarding} strategyReady={strategyReady} onAdvance={advanceFromChat} onGoBack={goBackToStrategyCreation} />
+              : <ChatScreen isOnboarding={isOnboarding} strategyReady={strategyReady} onAdvance={advanceFromChat} onGoBack={goBackToStrategyCreation} />
           )}
           {activeView === "strategy" && <StrategyScreen />}
           {activeView === "portfolio" && <PortfolioScreen />}

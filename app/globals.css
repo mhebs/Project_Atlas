@@ -49,6 +49,7 @@
   --ob-border: rgba(0,0,0,0.10);
   --ob-border-dark: rgba(255,255,255,0.06);
   --ob-error: #c84040;
+  --eg-bg: #0F2557;
 }
 
 @theme inline {
@@ -103,6 +104,7 @@
   --color-ob-border: var(--ob-border);
   --color-ob-border-dark: var(--ob-border-dark);
   --color-ob-error: var(--ob-error);
+  --color-eg-bg: var(--eg-bg);
 }
 
 @keyframes starDrift {

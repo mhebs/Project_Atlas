@@ -19,6 +19,7 @@ const PHASE_ORDER: OnboardingPhase[] = [
   "splash",
   "strategy_creation",
   "chat_onboarding",
+  "brokerage_choice",
   "brokerage_connect",
   "strategy_approval",
   "strategy_activated",
@@ -29,6 +30,7 @@ const PHASE_TO_HASH: Record<OnboardingPhase, string> = {
   splash: "#welcome",
   strategy_creation: "#strategy",
   chat_onboarding: "#chat",
+  brokerage_choice: "#choose-broker",
   brokerage_connect: "#connect",
   strategy_approval: "#review",
   strategy_activated: "#activated",
@@ -55,6 +57,7 @@ export function useOnboarding() {
   const [phase, setPhaseRaw] = useState<OnboardingPhase>("done")
   const [loading, setLoading] = useState(true)
   const [strategyExists, setStrategyExists] = useState(false)
+  const [strategyReady, setStrategyReady] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const mountedRef = useRef(true)
   const farthestRef = useRef(0) // index into PHASE_ORDER
@@ -105,13 +108,14 @@ export function useOnboarding() {
 
       if (strategy.confirmed) {
         setStrategyExists(true)
+        setStrategyReady(true)
         localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
         if (localStorage.getItem(STRATEGY_APPROVED_KEY) === "true") {
           setPhase("strategy_activated", false)
         } else if (localStorage.getItem(BROKERAGE_CONNECTED_KEY) === "true") {
           setPhase("strategy_approval", false)
         } else {
-          setPhase("brokerage_connect", false)
+          setPhase("brokerage_choice", false)
         }
       } else if (localStorage.getItem(SPLASH_KEY) === "true") {
         if (localStorage.getItem(STRATEGY_PATH_KEY)) {
@@ -178,17 +182,11 @@ export function useOnboarding() {
       if (!mountedRef.current) return
       if (strategy.confirmed) {
         setStrategyExists(true)
-        // Only auto-advance if this is the first time detecting the strategy.
-        // Without this guard, navigating back to chat would immediately bounce
-        // forward again because the polling re-detects the confirmed strategy.
+        // Signal that the strategy is ready but let the user decide when to advance.
         if (localStorage.getItem(STRATEGY_DETECTED_KEY) !== "true") {
           localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
-          if (localStorage.getItem(BROKERAGE_CONNECTED_KEY) === "true") {
-            setPhase("strategy_approval")
-          } else {
-            setPhase("brokerage_connect")
-          }
         }
+        setStrategyReady(true)
       }
     }, POLL_INTERVAL_MS)
 
@@ -215,15 +213,22 @@ export function useOnboarding() {
     setPhase("chat_onboarding")
   }, [setPhase])
 
+  const selectBrokerageOption = useCallback(() => {
+    setPhase("brokerage_connect")
+  }, [setPhase])
+
+  const goBackFromBrokerageChoice = useCallback(() => {
+    setPhaseRaw("chat_onboarding")
+    if (typeof window !== "undefined") window.history.back()
+  }, [])
+
   const connectBrokerage = useCallback(() => {
     localStorage.setItem(BROKERAGE_CONNECTED_KEY, "true")
     setPhase("strategy_approval")
   }, [setPhase])
 
   const goBackFromBrokerage = useCallback(() => {
-    // Use setPhaseRaw (no history push) + history.back() to preserve
-    // the forward history stack, so browser forward returns to #connect.
-    setPhaseRaw("chat_onboarding")
+    setPhaseRaw("brokerage_choice")
     if (typeof window !== "undefined") window.history.back()
   }, [])
 
@@ -236,6 +241,18 @@ export function useOnboarding() {
     setPhaseRaw("chat_onboarding")
     if (typeof window !== "undefined") window.history.back()
   }, [])
+
+  const advanceFromChat = useCallback(() => {
+    if (localStorage.getItem(BROKERAGE_CONNECTED_KEY) === "true") {
+      setPhase("strategy_approval")
+    } else {
+      setPhase("brokerage_choice")
+    }
+  }, [setPhase])
+
+  const goBackToStrategyCreation = useCallback(() => {
+    setPhase("strategy_creation")
+  }, [setPhase])
 
   const completeActivation = useCallback(() => {
     localStorage.setItem(ONBOARDED_KEY, "true")
@@ -251,8 +268,13 @@ export function useOnboarding() {
     phase,
     loading,
     strategyExists,
+    strategyReady,
     dismissSplash,
     selectStrategyPath,
+    advanceFromChat,
+    goBackToStrategyCreation,
+    selectBrokerageOption,
+    goBackFromBrokerageChoice,
     connectBrokerage,
     goBackFromBrokerage,
     approveStrategy,

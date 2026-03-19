@@ -890,6 +890,9 @@ function CompletedAnswerCard({ answers }: { answers: Record<string, string> }) {
 
 interface ChatScreenProps {
   isOnboarding?: boolean
+  strategyReady?: boolean
+  onAdvance?: () => void
+  onGoBack?: () => void
 }
 
 function isNearBottom(element: HTMLDivElement) {
@@ -935,7 +938,7 @@ function createBaseMessage(
   }
 }
 
-export function ChatScreen({ isOnboarding }: ChatScreenProps = {}) {
+export function ChatScreen({ isOnboarding, strategyReady, onAdvance, onGoBack }: ChatScreenProps = {}) {
   const [snapshot, setSnapshot] = useState<LatestSessionResponse | null>(null)
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [input, setInput] = useState("")
@@ -1380,6 +1383,34 @@ export function ChatScreen({ isOnboarding }: ChatScreenProps = {}) {
 
   return (
     <div className="flex h-full flex-col bg-[#F5F0E8]">
+      {/* Onboarding navigation bar */}
+      {isOnboarding && (
+        <div className="flex items-center justify-between border-b border-[#c8a43a]/15 px-6 py-3">
+          <button
+            type="button"
+            onClick={onGoBack}
+            className="flex items-center gap-1.5 text-[13px] text-[#9A7B2A] transition-colors hover:text-[#2C2617]"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M8.5 3L4.5 7L8.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Back
+          </button>
+          {strategyReady && onAdvance && (
+            <button
+              type="button"
+              onClick={onAdvance}
+              className="flex items-center gap-1.5 text-[13px] text-[#9A7B2A] transition-colors hover:text-[#2C2617]"
+            >
+              Continue
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M5.5 3L9.5 7L5.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
       {(loading || error || connectionState === "live") && (
         <div className="flex items-center justify-end gap-2 px-6 pt-4 pb-1">
           {connectionState === "live" && (
@@ -1493,6 +1524,25 @@ export function ChatScreen({ isOnboarding }: ChatScreenProps = {}) {
             </div>
           )}
       </div>
+
+      {/* Strategy ready banner */}
+      {strategyReady && onAdvance && (
+        <div className="mx-auto w-full max-w-3xl px-6 pb-3" style={{ animation: "fadeSlideUp 400ms ease-out" }}>
+          <div className="flex items-center justify-between rounded-2xl border border-[#c8a43a]/25 bg-white px-5 py-4">
+            <div>
+              <p className="text-[14px] font-medium text-[#2C2617]">Your strategy is ready</p>
+              <p className="text-[13px] text-[#8C8375]">Review it now, or keep chatting to refine.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onAdvance}
+              className="rounded-xl bg-[#d4af37]/80 px-6 py-2.5 font-mono text-[12px] uppercase tracking-wider text-[#1a1507] transition-colors hover:bg-[#d4af37]"
+            >
+              I&apos;m Ready
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="px-6 pb-6 pt-2">
         <PromptInput

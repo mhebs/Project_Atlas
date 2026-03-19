@@ -4,7 +4,7 @@
     {
       "type": "frame",
       "id": "rNr1j",
-      "x": 1380,
+      "x": 1379,
       "y": 0,
       "name": "Screen 1 — Entry Gate v2",
       "clip": true,
@@ -2837,7 +2837,8 @@
                       "fill": "#FFFFFF",
                       "content": "Set up your",
                       "fontFamily": "Geist",
-                      "fontSize": 28
+                      "fontSize": 28,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -2847,6 +2848,7 @@
                       "content": "brokerage.",
                       "fontFamily": "Instrument Serif",
                       "fontSize": 28,
+                      "fontWeight": "normal",
                       "fontStyle": "italic"
                     }
                   ]
@@ -2861,7 +2863,8 @@
                   "content": "Alpaca is the regulated broker that powers Atlas. Your money lives with them — not us.",
                   "textAlign": "center",
                   "fontFamily": "Geist",
-                  "fontSize": 14
+                  "fontSize": 14,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -2881,7 +2884,8 @@
                   "fill": "#FFFFFF4D",
                   "content": "03 / 04",
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             }

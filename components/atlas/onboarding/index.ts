@@ -1,4 +1,5 @@
 export { StrategyCreationOverlay } from "./strategy-creation-overlay"
+export { BrokerageChoiceOverlay } from "./brokerage-choice-overlay"
 export { BrokerageConnectOverlay } from "./brokerage-connect-overlay"
 export { StrategyApprovalOverlay } from "./strategy-approval-overlay"
 export { STRATEGY_PATHS, PRESET_STRATEGIES, AI_DESIGN_SEED } from "./strategy-paths"

@@ -61,8 +61,8 @@ export function StrategyApprovalOverlay({ onApprove, onEdit }: StrategyApprovalO
             </>
           }
           subheading="Confirm the plan before Atlas begins continuous execution."
-          currentStep={3}
-          totalSteps={4}
+          currentStep={4}
+          totalSteps={5}
         />
       </div>
 

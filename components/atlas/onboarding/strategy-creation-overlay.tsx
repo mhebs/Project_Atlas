@@ -45,7 +45,7 @@ export function StrategyCreationOverlay({ onSelectPath }: StrategyCreationOverla
     >
       {/* Left panel — 60% */}
       <div className="h-screen w-[60%]">
-        <SiliconGatePanel currentStep={1} totalSteps={4} />
+        <SiliconGatePanel currentStep={1} totalSteps={5} />
       </div>
 
       {/* Right panel — 40% */}
