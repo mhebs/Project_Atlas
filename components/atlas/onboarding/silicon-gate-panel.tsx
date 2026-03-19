@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { AtomCanvasGreen } from "./atom-canvas-green"
+import { AtomCanvas } from "./atom-canvas"
 
 interface SiliconGatePanelProps {
   headline?: ReactNode
@@ -12,7 +12,7 @@ interface SiliconGatePanelProps {
 
 export function SiliconGatePanel({ headline, subheading, currentStep, totalSteps }: SiliconGatePanelProps = {}) {
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#080e0a]">
+    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#0D1F3C]">
       {/* Subtle grid overlay */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -23,13 +23,13 @@ export function SiliconGatePanel({ headline, subheading, currentStep, totalSteps
         }}
       />
 
-      {/* Radial emerald glow behind atom */}
+      {/* Radial gold glow behind atom */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div
           className="h-[400px] w-[400px] rounded-full"
           style={{
             background:
-              "radial-gradient(circle, rgba(20,80,50,0.18) 0%, rgba(20,80,50,0.06) 40%, transparent 70%)",
+              "radial-gradient(circle, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 40%, transparent 70%)",
           }}
         />
       </div>
@@ -51,7 +51,7 @@ export function SiliconGatePanel({ headline, subheading, currentStep, totalSteps
           className="mt-10"
           style={{ animation: "fadeSlideUp 600ms ease-out 400ms both" }}
         >
-          <AtomCanvasGreen />
+          <AtomCanvas />
         </div>
 
         {/* Headline */}

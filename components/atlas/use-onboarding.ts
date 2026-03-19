@@ -10,7 +10,41 @@ const STRATEGY_DETECTED_KEY = "atlas:strategy_detected"
 const STRATEGY_PATH_KEY = "atlas:strategy_path"
 const STRATEGY_SEED_KEY = "atlas:strategy_seed"
 const STRATEGY_APPROVED_KEY = "atlas:strategy_approved"
+const BROKERAGE_CONNECTED_KEY = "atlas:brokerage_connected"
 const POLL_INTERVAL_MS = 3000
+
+/* ── Hash-based browser navigation ──────────────────────────── */
+
+const PHASE_ORDER: OnboardingPhase[] = [
+  "splash",
+  "strategy_creation",
+  "chat_onboarding",
+  "brokerage_connect",
+  "strategy_approval",
+  "strategy_activated",
+  "done",
+]
+
+const PHASE_TO_HASH: Record<OnboardingPhase, string> = {
+  splash: "#welcome",
+  strategy_creation: "#strategy",
+  chat_onboarding: "#chat",
+  brokerage_connect: "#connect",
+  strategy_approval: "#review",
+  strategy_activated: "#activated",
+  done: "",
+}
+
+const HASH_TO_PHASE: Record<string, OnboardingPhase> = {}
+for (const [phase, hash] of Object.entries(PHASE_TO_HASH)) {
+  if (hash) HASH_TO_PHASE[hash] = phase as OnboardingPhase
+}
+
+function phaseIndex(phase: OnboardingPhase): number {
+  return PHASE_ORDER.indexOf(phase)
+}
+
+/* ── Hook ───────────────────────────────────────────────────── */
 
 interface StrategySummaryCheck {
   confirmed: boolean
@@ -18,11 +52,29 @@ interface StrategySummaryCheck {
 }
 
 export function useOnboarding() {
-  const [phase, setPhase] = useState<OnboardingPhase>("done")
+  const [phase, setPhaseRaw] = useState<OnboardingPhase>("done")
   const [loading, setLoading] = useState(true)
   const [strategyExists, setStrategyExists] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const mountedRef = useRef(true)
+  const farthestRef = useRef(0) // index into PHASE_ORDER
+
+  // Wrapped setPhase that also syncs the URL hash and tracks farthest
+  const setPhase = useCallback((next: OnboardingPhase, pushHistory = true) => {
+    setPhaseRaw(next)
+    const idx = phaseIndex(next)
+    if (idx > farthestRef.current) farthestRef.current = idx
+
+    if (typeof window === "undefined") return
+    const hash = PHASE_TO_HASH[next]
+    if (pushHistory && window.location.hash !== hash) {
+      if (hash) {
+        window.history.pushState(null, "", hash)
+      } else {
+        window.history.pushState(null, "", window.location.pathname)
+      }
+    }
+  }, [])
 
   const checkStrategy = useCallback(async (): Promise<StrategySummaryCheck> => {
     try {
@@ -42,7 +94,7 @@ export function useOnboarding() {
     const init = async () => {
       // Fast path: returning user
       if (localStorage.getItem(ONBOARDED_KEY) === "true") {
-        setPhase("done")
+        setPhase("done", false)
         setStrategyExists(true)
         setLoading(false)
         return
@@ -55,19 +107,27 @@ export function useOnboarding() {
         setStrategyExists(true)
         localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
         if (localStorage.getItem(STRATEGY_APPROVED_KEY) === "true") {
-          setPhase("strategy_activated")
+          setPhase("strategy_activated", false)
+        } else if (localStorage.getItem(BROKERAGE_CONNECTED_KEY) === "true") {
+          setPhase("strategy_approval", false)
         } else {
-          setPhase("strategy_approval")
+          setPhase("brokerage_connect", false)
         }
       } else if (localStorage.getItem(SPLASH_KEY) === "true") {
-        // Splash dismissed — check if strategy path was chosen
         if (localStorage.getItem(STRATEGY_PATH_KEY)) {
-          setPhase("chat_onboarding")
+          setPhase("chat_onboarding", false)
         } else {
-          setPhase("strategy_creation")
+          setPhase("strategy_creation", false)
         }
       } else {
-        setPhase("splash")
+        setPhase("splash", false)
+      }
+
+      // Replace (don't push) the initial hash
+      const initialPhase = PHASE_ORDER[farthestRef.current] || "splash"
+      const hash = PHASE_TO_HASH[initialPhase]
+      if (hash && typeof window !== "undefined") {
+        window.history.replaceState(null, "", hash)
       }
 
       setLoading(false)
@@ -77,7 +137,31 @@ export function useOnboarding() {
     return () => {
       mountedRef.current = false
     }
-  }, [checkStrategy])
+  }, [checkStrategy, setPhase])
+
+  // Listen for browser back/forward
+  useEffect(() => {
+    function handlePopstate() {
+      const hash = window.location.hash
+      const targetPhase = HASH_TO_PHASE[hash]
+      if (!targetPhase) return
+
+      const targetIdx = phaseIndex(targetPhase)
+      // Clamp to farthest reached
+      if (targetIdx <= farthestRef.current) {
+        setPhaseRaw(targetPhase)
+      } else {
+        // User tried to go beyond farthest — push them back
+        const clampedPhase = PHASE_ORDER[farthestRef.current]
+        const clampedHash = PHASE_TO_HASH[clampedPhase]
+        window.history.replaceState(null, "", clampedHash || window.location.pathname)
+        setPhaseRaw(clampedPhase)
+      }
+    }
+
+    window.addEventListener("popstate", handlePopstate)
+    return () => window.removeEventListener("popstate", handlePopstate)
+  }, [])
 
   // Poll during chat_onboarding to detect when agent calls confirm_strategy
   useEffect(() => {
@@ -94,8 +178,17 @@ export function useOnboarding() {
       if (!mountedRef.current) return
       if (strategy.confirmed) {
         setStrategyExists(true)
-        localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
-        setPhase("strategy_approval")
+        // Only auto-advance if this is the first time detecting the strategy.
+        // Without this guard, navigating back to chat would immediately bounce
+        // forward again because the polling re-detects the confirmed strategy.
+        if (localStorage.getItem(STRATEGY_DETECTED_KEY) !== "true") {
+          localStorage.setItem(STRATEGY_DETECTED_KEY, "true")
+          if (localStorage.getItem(BROKERAGE_CONNECTED_KEY) === "true") {
+            setPhase("strategy_approval")
+          } else {
+            setPhase("brokerage_connect")
+          }
+        }
       }
     }, POLL_INTERVAL_MS)
 
@@ -105,12 +198,12 @@ export function useOnboarding() {
         pollRef.current = null
       }
     }
-  }, [phase, checkStrategy])
+  }, [phase, checkStrategy, setPhase])
 
   const dismissSplash = useCallback(() => {
     localStorage.setItem(SPLASH_KEY, "true")
     setPhase("strategy_creation")
-  }, [])
+  }, [setPhase])
 
   const selectStrategyPath = useCallback((pathId: StrategyPathId, seed?: string) => {
     localStorage.setItem(STRATEGY_PATH_KEY, pathId)
@@ -120,15 +213,28 @@ export function useOnboarding() {
       localStorage.removeItem(STRATEGY_SEED_KEY)
     }
     setPhase("chat_onboarding")
+  }, [setPhase])
+
+  const connectBrokerage = useCallback(() => {
+    localStorage.setItem(BROKERAGE_CONNECTED_KEY, "true")
+    setPhase("strategy_approval")
+  }, [setPhase])
+
+  const goBackFromBrokerage = useCallback(() => {
+    // Use setPhaseRaw (no history push) + history.back() to preserve
+    // the forward history stack, so browser forward returns to #connect.
+    setPhaseRaw("chat_onboarding")
+    if (typeof window !== "undefined") window.history.back()
   }, [])
 
   const approveStrategy = useCallback(() => {
     localStorage.setItem(STRATEGY_APPROVED_KEY, "true")
     setPhase("strategy_activated")
-  }, [])
+  }, [setPhase])
 
   const editStrategy = useCallback(() => {
-    setPhase("chat_onboarding")
+    setPhaseRaw("chat_onboarding")
+    if (typeof window !== "undefined") window.history.back()
   }, [])
 
   const completeActivation = useCallback(() => {
@@ -137,8 +243,20 @@ export function useOnboarding() {
     localStorage.removeItem(STRATEGY_PATH_KEY)
     localStorage.removeItem(STRATEGY_SEED_KEY)
     localStorage.removeItem(STRATEGY_APPROVED_KEY)
+    localStorage.removeItem(BROKERAGE_CONNECTED_KEY)
     setPhase("done")
-  }, [])
+  }, [setPhase])
 
-  return { phase, loading, dismissSplash, selectStrategyPath, approveStrategy, editStrategy, completeActivation, strategyExists }
+  return {
+    phase,
+    loading,
+    strategyExists,
+    dismissSplash,
+    selectStrategyPath,
+    connectBrokerage,
+    goBackFromBrokerage,
+    approveStrategy,
+    editStrategy,
+    completeActivation,
+  }
 }

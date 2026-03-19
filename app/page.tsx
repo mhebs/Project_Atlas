@@ -12,7 +12,7 @@ import { AccountsScreen } from "@/components/atlas/accounts-screen"
 import { UserScreen } from "@/components/atlas/user-screen"
 import { SplashOverlay } from "@/components/atlas/splash-overlay"
 import { StrategyActivatedOverlay } from "@/components/atlas/strategy-activated-overlay"
-import { StrategyCreationOverlay, StrategyApprovalOverlay } from "@/components/atlas/onboarding"
+import { StrategyCreationOverlay, BrokerageConnectOverlay, StrategyApprovalOverlay } from "@/components/atlas/onboarding"
 import { useOnboarding } from "@/components/atlas/use-onboarding"
 import type { AtlasView } from "@/components/atlas/view-types"
 
@@ -22,7 +22,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState<AtlasView>("chat")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [justActivated, setJustActivated] = useState(false)
-  const { phase, loading, dismissSplash, selectStrategyPath, approveStrategy, editStrategy, completeActivation } = useOnboarding()
+  const { phase, loading, dismissSplash, selectStrategyPath, connectBrokerage, goBackFromBrokerage, approveStrategy, editStrategy, completeActivation } = useOnboarding()
 
   const isOnboarding = phase !== "done"
 
@@ -51,6 +51,9 @@ export default function Home() {
       {phase === "splash" && <SplashOverlay onDismiss={dismissSplash} />}
       {phase === "strategy_creation" && (
         <StrategyCreationOverlay onSelectPath={selectStrategyPath} />
+      )}
+      {phase === "brokerage_connect" && (
+        <BrokerageConnectOverlay onConnect={connectBrokerage} onBack={goBackFromBrokerage} />
       )}
       {phase === "strategy_approval" && (
         <StrategyApprovalOverlay onApprove={approveStrategy} onEdit={editStrategy} />
